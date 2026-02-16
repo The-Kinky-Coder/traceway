@@ -36,15 +36,17 @@ func convertTraces(projectId uuid.UUID, req *coltracepb.ExportTraceServiceReques
 				spanAttrs := span.Attributes
 				allAttrs := extractAttributes(spanAttrs)
 
-				traceId := otelTraceIDToUUID(span.TraceId)
-				if traceId == uuid.Nil {
-					rayId := getStringAttribute(spanAttrs, "cloudflare.ray_id")
-					if rayId == "" {
-						rayId = getStringAttribute(resourceAttrs, "cloudflare.ray_id")
-					}
-					if rayId != "" {
-						traceId = rayIDToUUID(rayId)
-					} else {
+				rayId := getStringAttribute(spanAttrs, "cloudflare.ray_id")
+				if rayId == "" {
+					rayId = getStringAttribute(resourceAttrs, "cloudflare.ray_id")
+				}
+
+				var traceId uuid.UUID
+				if rayId != "" {
+					traceId = rayIDToUUID(rayId)
+				} else {
+					traceId = otelTraceIDToUUID(span.TraceId)
+					if traceId == uuid.Nil {
 						traceId = uuid.New()
 					}
 				}

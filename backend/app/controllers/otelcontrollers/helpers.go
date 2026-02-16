@@ -3,6 +3,7 @@ package otelcontrollers
 import (
 	"encoding/hex"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,9 @@ func otelTraceIDToUUID(traceID []byte) uuid.UUID {
 }
 
 func rayIDToUUID(rayID string) uuid.UUID {
+	if idx := strings.IndexByte(rayID, '-'); idx != -1 {
+		rayID = rayID[:idx]
+	}
 	b, err := hex.DecodeString(rayID)
 	if err != nil || len(b) == 0 {
 		return uuid.New()
