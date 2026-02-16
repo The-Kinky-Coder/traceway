@@ -81,7 +81,7 @@ func convertTraces(projectId uuid.UUID, req *coltracepb.ExportTraceServiceReques
 func hasHTTPAttributes(attrs []*commonpb.KeyValue) bool {
 	for _, kv := range attrs {
 		switch kv.Key {
-		case "http.request.method", "http.method", "http.route":
+		case "http.request.method", "http.method", "http.route", "url.path":
 			return true
 		}
 	}
@@ -139,6 +139,9 @@ func getHTTPEndpoint(attrs []*commonpb.KeyValue, fallback string) string {
 		method = getStringAttribute(attrs, "http.method")
 	}
 	route := getStringAttribute(attrs, "http.route")
+	if route == "" {
+		route = getStringAttribute(attrs, "url.path")
+	}
 
 	if method != "" && route != "" {
 		return method + " " + route
