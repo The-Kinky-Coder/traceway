@@ -1,7 +1,7 @@
 import { api } from '$lib/api';
 import { authState } from './auth.svelte';
 
-export type Framework = 'gin' | 'fiber' | 'chi' | 'fasthttp' | 'stdlib' | 'custom' | 'react' | 'svelte' | 'vuejs' | 'nextjs' | 'nestjs' | 'express' | 'remix' | 'opentelemetry';
+export type Framework = 'gin' | 'fiber' | 'chi' | 'fasthttp' | 'stdlib' | 'custom' | 'react' | 'svelte' | 'vuejs' | 'nextjs' | 'nestjs' | 'express' | 'remix' | 'cloudflare' | 'opentelemetry';
 
 export const FRONTEND_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs'];
 export const JS_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'nextjs', 'nestjs', 'express', 'remix'];
@@ -20,6 +20,7 @@ export const FRAMEWORK_LABELS: Record<Framework, string> = {
 	nestjs: 'NestJS',
 	express: 'Express',
 	remix: 'Remix',
+	cloudflare: 'Cloudflare',
 	opentelemetry: 'OpenTelemetry',
 };
 
@@ -37,6 +38,10 @@ export function isJsFramework(fw: Framework): boolean {
 
 export function isOtelFramework(fw: Framework): boolean {
 	return fw === 'opentelemetry';
+}
+
+export function isCloudflareFramework(fw: Framework): boolean {
+	return fw === 'cloudflare';
 }
 
 export interface Project {

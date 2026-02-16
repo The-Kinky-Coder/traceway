@@ -34,6 +34,7 @@
         { value: 'nestjs', label: 'NestJS', description: 'Node.js server framework', group: 'JavaScript' },
         { value: 'express', label: 'Express', description: 'Minimal Node.js framework', group: 'JavaScript' },
         { value: 'remix', label: 'Remix', description: 'React full-stack framework', group: 'JavaScript' },
+        { value: 'cloudflare', label: 'Cloudflare', description: 'Cloudflare Workers (OTLP Traces)', group: 'Backend' },
         { value: 'opentelemetry', label: 'OpenTelemetry', description: 'Vendor-neutral observability', group: 'Backend' },
     ] as const;
 

@@ -28,6 +28,8 @@ export function getInstallCommand(framework: Framework): string {
 			return 'npm install @tracewayapp/express';
 		case 'remix':
 			return 'npm install @tracewayapp/remix';
+		case 'cloudflare':
+			return '';
 		case 'opentelemetry':
 			return '';
 		case 'custom':
@@ -202,6 +204,9 @@ export default withTraceway({
     connectionString: "${connectionString}",
 });`;
 
+		case 'cloudflare':
+			return '';
+
 		case 'opentelemetry':
 			return '';
 
@@ -291,6 +296,7 @@ export function getFrameworkLabel(framework: Framework): string {
 		nestjs: 'NestJS',
 		express: 'Express',
 		remix: 'Remix',
+		cloudflare: 'Cloudflare',
 		opentelemetry: 'OpenTelemetry',
 	};
 	return labels[framework] || framework;
@@ -298,5 +304,6 @@ export function getFrameworkLabel(framework: Framework): string {
 
 export function getCodeLanguage(framework: Framework): 'go' | 'javascript' {
 	if (framework === 'opentelemetry') return 'go';
+	if (framework === 'cloudflare') return 'javascript';
 	return isJsFramework(framework) ? 'javascript' : 'go';
 }

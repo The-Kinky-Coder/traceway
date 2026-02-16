@@ -40,6 +40,7 @@ const frameworks = [
   { name: "Svelte", src: "/images/frameworks/svelte.png" },
   { name: "Remix", src: "/images/frameworks/remix.png" },
   { name: "OpenTelemetry", src: "/images/frameworks/otel.png" },
+  { name: "Cloudflare", src: "/images/frameworks/cloudflare.png" },
 ];
 
 export default function Home() {

@@ -8,7 +8,7 @@
 	} from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Copy, Check, KeyRound } from 'lucide-svelte';
-	import { projectsState, type ProjectWithToken, isJsFramework, isOtelFramework } from '$lib/state/projects.svelte';
+	import { projectsState, type ProjectWithToken, isJsFramework, isOtelFramework, isCloudflareFramework } from '$lib/state/projects.svelte';
 	import { LoadingCircle } from '$lib/components/ui/loading-circle';
 	import FrameworkIcon from '$lib/components/framework-icon.svelte';
 	import Highlight from 'svelte-highlight';
@@ -31,10 +31,31 @@
 	let generatingToken = $state(false);
 	let copiedOtelEndpoint = $state(false);
 	let copiedOtelToken = $state(false);
+	let copiedCfEndpoint = $state(false);
+	let copiedCfAuth = $state(false);
+	let copiedCfWrangler = $state(false);
+	let copiedCfDeploy = $state(false);
 
 	const isOtel = $derived(projectWithToken ? isOtelFramework(projectWithToken.framework) : false);
+	const isCloudflare = $derived(projectWithToken ? isCloudflareFramework(projectWithToken.framework) : false);
 	const otelEndpoint = $derived(projectWithToken ? `${projectWithToken.backendUrl}/api/report` : '');
 	const otelToken = $derived(projectWithToken?.token ?? '');
+	const cloudflareOtelEndpoint = $derived(projectWithToken ? `${projectWithToken.backendUrl}/api/otel/v1/traces` : '');
+	const cloudflareAuthHeader = $derived(projectWithToken ? `Bearer ${projectWithToken.token}` : '');
+	const wranglerConfig = $derived(projectWithToken ? `{
+  "observability": {
+    "traces": {
+      "enabled": true,
+      "head_sample_rate": 1,
+      "destinations": [
+        {
+          "name": "traceway",
+          "type": "otlp"
+        }
+      ]
+    }
+  }
+}` : '');
 
 	const sdkCode = $derived(
 		projectWithToken
@@ -97,6 +118,30 @@
 		setTimeout(() => (copiedCommand = false), 2000);
 	}
 
+	async function copyCfEndpoint() {
+		await navigator.clipboard.writeText(cloudflareOtelEndpoint);
+		copiedCfEndpoint = true;
+		setTimeout(() => (copiedCfEndpoint = false), 2000);
+	}
+
+	async function copyCfAuth() {
+		await navigator.clipboard.writeText(cloudflareAuthHeader);
+		copiedCfAuth = true;
+		setTimeout(() => (copiedCfAuth = false), 2000);
+	}
+
+	async function copyCfWrangler() {
+		await navigator.clipboard.writeText(wranglerConfig);
+		copiedCfWrangler = true;
+		setTimeout(() => (copiedCfWrangler = false), 2000);
+	}
+
+	async function copyCfDeploy() {
+		await navigator.clipboard.writeText('npx wrangler deploy');
+		copiedCfDeploy = true;
+		setTimeout(() => (copiedCfDeploy = false), 2000);
+	}
+
 	async function copyOtelEndpoint() {
 		await navigator.clipboard.writeText(otelEndpoint);
 		copiedOtelEndpoint = true;
@@ -149,6 +194,87 @@
 								<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">{otelToken}</code>
 								<Button variant="outline" size="sm" onclick={copyOtelToken}>
 									{#if copiedOtelToken}
+										<Check class="h-4 w-4 text-green-500" />
+									{:else}
+										<Copy class="h-4 w-4" />
+									{/if}
+								</Button>
+							</div>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		{:else if isCloudflare}
+			<Card>
+				<CardHeader>
+					<CardTitle class="flex items-center gap-2">
+						<FrameworkIcon framework={projectWithToken.framework} />
+						Cloudflare Workers Integration
+					</CardTitle>
+					<CardDescription>
+						Use Cloudflare's native Observability Destinations to send traces to Traceway
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div class="space-y-6">
+						<div>
+							<p class="text-sm font-medium mb-2">Step 1 — OTLP Traces Endpoint</p>
+							<p class="text-xs text-muted-foreground mb-2">Enter this URL when creating your OTLP destination in the Cloudflare dashboard.</p>
+							<div class="flex items-center gap-2">
+								<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">{cloudflareOtelEndpoint}</code>
+								<Button variant="outline" size="sm" onclick={copyCfEndpoint}>
+									{#if copiedCfEndpoint}
+										<Check class="h-4 w-4 text-green-500" />
+									{:else}
+										<Copy class="h-4 w-4" />
+									{/if}
+								</Button>
+							</div>
+						</div>
+						<div>
+							<p class="text-sm font-medium mb-2">Step 2 — Authorization Header</p>
+							<p class="text-xs text-muted-foreground mb-2">Add this as an authorization header in your OTLP destination settings.</p>
+							<div class="flex items-center gap-2">
+								<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">{cloudflareAuthHeader}</code>
+								<Button variant="outline" size="sm" onclick={copyCfAuth}>
+									{#if copiedCfAuth}
+										<Check class="h-4 w-4 text-green-500" />
+									{:else}
+										<Copy class="h-4 w-4" />
+									{/if}
+								</Button>
+							</div>
+						</div>
+						<div>
+							<p class="text-sm font-medium mb-2">Step 3 — wrangler.jsonc</p>
+							<p class="text-xs text-muted-foreground mb-2">Enable observability traces in your wrangler.jsonc configuration file.</p>
+							<div class="relative">
+								<div class="absolute top-2 right-2 z-10">
+									<Button variant="outline" size="sm" onclick={copyCfWrangler}>
+										{#if copiedCfWrangler}
+											<Check class="mr-2 h-4 w-4 text-green-500" />
+											Copied!
+										{:else}
+											<Copy class="mr-2 h-4 w-4" />
+											Copy
+										{/if}
+									</Button>
+								</div>
+								<div
+									class="overflow-x-auto rounded-lg text-sm {themeState.isDark
+										? 'dark-code'
+										: 'light-code'}"
+								>
+									<Highlight language={javascript} code={wranglerConfig} />
+								</div>
+							</div>
+						</div>
+						<div>
+							<p class="text-sm font-medium mb-2">Step 4 — Deploy</p>
+							<div class="flex items-center gap-2">
+								<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">npx wrangler deploy</code>
+								<Button variant="outline" size="sm" onclick={copyCfDeploy}>
+									{#if copiedCfDeploy}
 										<Check class="h-4 w-4 text-green-500" />
 									{:else}
 										<Copy class="h-4 w-4" />

@@ -11,6 +11,14 @@ const FRAMEWORKS = [
     badge: "new",
   },
   {
+    value: "cloudflare",
+    label: "Cloudflare Workers",
+    description: "Cloudflare Workers with automatic request tracing via OTLP.",
+    icon: "/cloudflare.png",
+    href: "/client/cloudflare",
+    badge: "new",
+  },
+  {
     value: "go-gin",
     label: "Go Gin",
     description:

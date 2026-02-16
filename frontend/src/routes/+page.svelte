@@ -26,7 +26,8 @@
 		projectsState,
 		type ProjectWithToken,
 		isFrontendFramework,
-		isJsFramework
+		isJsFramework,
+		isCloudflareFramework
 	} from '$lib/state/projects.svelte';
 	import { setSortState } from '$lib/utils/sort-storage';
 	import { Button } from '$lib/components/ui/button';
@@ -125,6 +126,53 @@
 
 	const testingRouteCode = $derived(getTestingRouteCode(projectWithToken?.framework));
 	const testingRouteCode2 = $derived(getTestingRouteCode2(projectWithToken?.framework));
+
+	const isCloudflare = $derived(projectWithToken ? isCloudflareFramework(projectWithToken.framework) : false);
+	const cfOtelEndpoint = $derived(projectWithToken ? `${projectWithToken.backendUrl}/api/otel/v1/traces` : '');
+	const cfAuthHeader = $derived(projectWithToken ? `Bearer ${projectWithToken.token}` : '');
+	const cfWranglerConfig = $derived(`{
+  "observability": {
+    "traces": {
+      "enabled": true,
+      "head_sample_rate": 1,
+      "destinations": [
+        {
+          "name": "traceway",
+          "type": "otlp"
+        }
+      ]
+    }
+  }
+}`);
+
+	let copiedCfEndpoint = $state(false);
+	let copiedCfAuth = $state(false);
+	let copiedCfWrangler = $state(false);
+	let copiedCfDeploy = $state(false);
+
+	async function copyCfEndpoint() {
+		await navigator.clipboard.writeText(cfOtelEndpoint);
+		copiedCfEndpoint = true;
+		setTimeout(() => (copiedCfEndpoint = false), 2000);
+	}
+
+	async function copyCfAuth() {
+		await navigator.clipboard.writeText(cfAuthHeader);
+		copiedCfAuth = true;
+		setTimeout(() => (copiedCfAuth = false), 2000);
+	}
+
+	async function copyCfWrangler() {
+		await navigator.clipboard.writeText(cfWranglerConfig);
+		copiedCfWrangler = true;
+		setTimeout(() => (copiedCfWrangler = false), 2000);
+	}
+
+	async function copyCfDeploy() {
+		await navigator.clipboard.writeText('npx wrangler deploy');
+		copiedCfDeploy = true;
+		setTimeout(() => (copiedCfDeploy = false), 2000);
+	}
 
 	async function copyInstall() {
 		await navigator.clipboard.writeText(installCommand);
@@ -245,6 +293,120 @@
 			</div>
 
 			{#if projectWithToken}
+				{#if isCloudflare}
+					<!-- Cloudflare Step 1: Create a Destination -->
+					<div class="rounded-md border bg-card">
+						<div class="border-b px-4 py-3">
+							<div class="flex items-center gap-3">
+								<div
+									class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
+								>
+									1
+								</div>
+								<h3 class="font-semibold">Create a Destination</h3>
+							</div>
+							<p class="mt-1 ml-9 text-sm text-muted-foreground">
+								In the Cloudflare dashboard, create an OTLP destination with the endpoint and authorization header below.
+							</p>
+						</div>
+						<div class="p-4 space-y-4">
+							<div>
+								<p class="text-sm font-medium mb-2">OTLP Traces Endpoint</p>
+								<div class="flex items-center gap-2">
+									<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">{cfOtelEndpoint}</code>
+									<Button variant="outline" size="sm" onclick={copyCfEndpoint}>
+										{#if copiedCfEndpoint}
+											<Check class="h-4 w-4 text-green-500" />
+										{:else}
+											<Copy class="h-4 w-4" />
+										{/if}
+									</Button>
+								</div>
+							</div>
+							<div>
+								<p class="text-sm font-medium mb-2">Authorization Header</p>
+								<div class="flex items-center gap-2">
+									<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">{cfAuthHeader}</code>
+									<Button variant="outline" size="sm" onclick={copyCfAuth}>
+										{#if copiedCfAuth}
+											<Check class="h-4 w-4 text-green-500" />
+										{:else}
+											<Copy class="h-4 w-4" />
+										{/if}
+									</Button>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Cloudflare Step 2: Enable in wrangler.jsonc -->
+					<div class="rounded-md border bg-card">
+						<div class="border-b px-4 py-3">
+							<div class="flex items-center gap-3">
+								<div
+									class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
+								>
+									2
+								</div>
+								<h3 class="font-semibold">Enable in wrangler.jsonc</h3>
+							</div>
+							<p class="mt-1 ml-9 text-sm text-muted-foreground">
+								Add the observability configuration to your wrangler.jsonc file.
+							</p>
+						</div>
+						<div class="p-4">
+							<div class="relative">
+								<div class="absolute top-2 right-2 z-10">
+									<Button variant="outline" size="sm" onclick={copyCfWrangler}>
+										{#if copiedCfWrangler}
+											<Check class="mr-2 h-4 w-4 text-green-500" />
+											Copied!
+										{:else}
+											<Copy class="mr-2 h-4 w-4" />
+											Copy
+										{/if}
+									</Button>
+								</div>
+								<div
+									class="overflow-x-auto rounded-lg text-sm {themeState.isDark
+										? 'dark-code'
+										: 'light-code'}"
+								>
+									<Highlight language={javascript} code={cfWranglerConfig} />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Cloudflare Step 3: Deploy -->
+					<div class="rounded-md border bg-card">
+						<div class="border-b px-4 py-3">
+							<div class="flex items-center gap-3">
+								<div
+									class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
+								>
+									3
+								</div>
+								<h3 class="font-semibold">Deploy</h3>
+							</div>
+							<p class="mt-1 ml-9 text-sm text-muted-foreground">
+								Deploy your worker to start sending traces.
+							</p>
+						</div>
+						<div class="p-4">
+							<div class="flex items-center gap-2">
+								<code class="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">npx wrangler deploy</code>
+								<Button variant="outline" size="sm" onclick={copyCfDeploy}>
+									{#if copiedCfDeploy}
+										<Check class="h-4 w-4 text-green-500" />
+									{:else}
+										<Copy class="h-4 w-4" />
+									{/if}
+								</Button>
+							</div>
+						</div>
+					</div>
+				{:else}
 				<!-- Step 1: Install -->
 				<div class="rounded-md border bg-card">
 					<div class="border-b px-4 py-3">
@@ -386,6 +548,7 @@
 					</div>
 				</div>
 
+				{/if}
 				<!-- Bottom Check Again -->
 				<div class="rounded-md border bg-card">
 					<div class="flex flex-col items-center justify-center px-6 py-6 text-center">

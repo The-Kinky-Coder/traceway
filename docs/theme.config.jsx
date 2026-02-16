@@ -19,6 +19,7 @@ const SDK_VISIBILITY = {
   svelte: "js-svelte",
   "js-sdk": "js-",
   otel: "otel",
+  cloudflare: "cloudflare",
 };
 
 export default {

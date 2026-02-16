@@ -15,6 +15,7 @@ export const SDK_OPTIONS = [
   { value: 'js-svelte', label: 'Svelte' },
   { value: 'js-generic', label: 'JS Generic' },
   { value: 'otel', label: 'OpenTelemetry (otel)' },
+  { value: 'cloudflare', label: 'Cloudflare Workers' },
 ]
 
 const STORAGE_KEY = 'traceway-docs-sdk'
@@ -32,6 +33,7 @@ const PATH_SDK_MAP = {
   'vue': 'js-vue',
   'svelte': 'js-svelte',
   'otel': 'otel',
+  'cloudflare': 'cloudflare',
 }
 
 const SdkContext = createContext({
