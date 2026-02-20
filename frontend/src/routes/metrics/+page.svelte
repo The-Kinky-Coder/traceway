@@ -22,8 +22,9 @@
 		updateUrl
 	} from '$lib/utils/url-params';
 	import { CalendarDate } from '@internationalized/date';
-	import { Trash2, Plus, RefreshCw, CircleAlert } from 'lucide-svelte';
+	import { Trash2, Plus, RefreshCw, CircleAlert, EllipsisVertical } from 'lucide-svelte';
 	import * as Alert from '$lib/components/ui/alert';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { toast } from 'svelte-sonner';
 	import type { DiscoveredMetric } from '$lib/types/dashboard';
 
@@ -406,12 +407,6 @@
 				bind:preset={selectedPreset}
 				onApply={handleTimeRangeChange}
 			/>
-			{#if !activeIsDefault && activeTabId}
-				<Button variant="destructive" size="sm" onclick={() => (showDeleteDialog = true)}>
-					<Trash2 class="mr-1 h-4 w-4" />
-					Delete
-				</Button>
-			{/if}
 		</div>
 	</div>
 
@@ -450,11 +445,43 @@
 					class="flex min-w-0 items-center overflow-hidden"
 					class:invisible={hasOverflow}
 					class:h-0={hasOverflow}
+					class:w-0={hasOverflow}
 					bind:this={tabsListEl}
 				>
 					<Tabs.List>
 						{#each widgetGroups as group (group.id)}
-							<Tabs.Trigger value={String(group.id)}>{group.name}</Tabs.Trigger>
+							<Tabs.Trigger value={String(group.id)}>
+								{group.name}
+								{#if !group.isDefault && String(group.id) === activeTabId}
+									<DropdownMenu.Root>
+										<DropdownMenu.Trigger>
+											{#snippet child({ props })}
+												<span
+													{...props}
+													class="ml-1 -mr-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+													role="button"
+													tabindex={0}
+													onclick={(e) => e.stopPropagation()}
+													onkeydown={(e) => {
+														if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+													}}
+												>
+													<EllipsisVertical class="h-3.5 w-3.5" />
+												</span>
+											{/snippet}
+										</DropdownMenu.Trigger>
+										<DropdownMenu.Content align="start">
+											<DropdownMenu.Item
+												class="text-destructive"
+												onclick={() => (showDeleteDialog = true)}
+											>
+												<Trash2 class="mr-2 h-4 w-4" />
+												Delete Group
+											</DropdownMenu.Item>
+										</DropdownMenu.Content>
+									</DropdownMenu.Root>
+								{/if}
+							</Tabs.Trigger>
 						{/each}
 					</Tabs.List>
 				</div>
@@ -464,6 +491,24 @@
 				>
 					<Plus class="h-4 w-4" />
 				</button>
+				{#if hasOverflow && !activeIsDefault && activeTabId}
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger
+							class="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						>
+							<EllipsisVertical class="h-4 w-4" />
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Content align="end">
+							<DropdownMenu.Item
+								class="text-destructive"
+								onclick={() => (showDeleteDialog = true)}
+							>
+								<Trash2 class="mr-2 h-4 w-4" />
+								Delete Group
+							</DropdownMenu.Item>
+						</DropdownMenu.Content>
+					</DropdownMenu.Root>
+				{/if}
 				{#if lastUpdated}
 					<div class="ml-auto flex items-center gap-1">
 						<span class="text-sm whitespace-nowrap text-muted-foreground">

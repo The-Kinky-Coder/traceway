@@ -158,7 +158,7 @@ func aggregationFunc(agg string, table string) string {
 		case "sum":
 			return "sum(value)"
 		case "count":
-			return "count()"
+			return "toFloat64(count())"
 		default:
 			return "avg(value)"
 		}
@@ -171,7 +171,7 @@ func aggregationFunc(agg string, table string) string {
 	case "sum":
 		return "sumMerge(sum_val)"
 	case "count":
-		return "countMerge(count_val)"
+		return "toFloat64(countMerge(count_val))"
 	default:
 		return "sumMerge(sum_val) / countMerge(count_val)"
 	}
