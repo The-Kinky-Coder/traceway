@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/models"
 	"database/sql"
 	"fmt"
 	"strings"

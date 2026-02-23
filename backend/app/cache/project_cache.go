@@ -1,9 +1,9 @@
 package cache
 
 import (
-	"backend/app/models"
-	"backend/app/db"
-	"backend/app/repositories"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
 	"context"
 	"database/sql"
 	"sort"

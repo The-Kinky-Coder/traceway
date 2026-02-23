@@ -1,7 +1,7 @@
 package db
 
 import (
-	"backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/config"
 	"database/sql"
 	"fmt"
 	"log"

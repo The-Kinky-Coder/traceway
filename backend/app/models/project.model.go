@@ -1,7 +1,7 @@
 package models
 
 import (
-	"backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/config"
 	"time"
 
 	"github.com/google/uuid"

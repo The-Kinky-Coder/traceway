@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"backend/app/cache"
-	"backend/app/db"
-	"backend/app/repositories"
+	"github.com/tracewayapp/traceway/backend/app/cache"
+	"github.com/tracewayapp/traceway/backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
 	"database/sql"
 	"net/http"
 

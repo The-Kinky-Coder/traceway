@@ -1,7 +1,7 @@
 package chdb
 
 import (
-	"backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/config"
 	"context"
 	"crypto/tls"
 	"database/sql"

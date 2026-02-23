@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"backend/app/models"
-	"backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/db"
 	"database/sql"
 
 	"github.com/google/uuid"

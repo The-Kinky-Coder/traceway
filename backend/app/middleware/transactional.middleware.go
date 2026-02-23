@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/db"
 	"database/sql"
 	"net/http"
 

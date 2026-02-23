@@ -1,9 +1,9 @@
 package migrations
 
 import (
-	"backend/app/chdb"
-	"backend/app/config"
-	"backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/chdb"
+	"github.com/tracewayapp/traceway/backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/db"
 	"database/sql"
 	"embed"
 	"fmt"

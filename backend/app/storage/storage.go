@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/config"
 	"context"
 	"fmt"
 )

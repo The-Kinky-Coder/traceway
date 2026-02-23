@@ -1,9 +1,9 @@
-//go:build chdb
+//go:build !nochdb
 
 package chdb
 
 import (
-	"backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/config"
 	"context"
 	"database/sql"
 	"fmt"

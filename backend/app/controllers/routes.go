@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"backend/app/config"
-	"backend/app/controllers/clientcontrollers"
-	"backend/app/controllers/otelcontrollers"
-	"backend/app/middleware"
+	"github.com/tracewayapp/traceway/backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/controllers/clientcontrollers"
+	"github.com/tracewayapp/traceway/backend/app/controllers/otelcontrollers"
+	"github.com/tracewayapp/traceway/backend/app/middleware"
 
 	"github.com/gin-gonic/gin"
 )

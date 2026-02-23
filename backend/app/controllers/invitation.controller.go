@@ -1,11 +1,11 @@
 package controllers
 
 import (
-	"backend/app/middleware"
-	"backend/app/models"
-	"backend/app/db"
-	"backend/app/repositories"
-	"backend/app/services"
+	"github.com/tracewayapp/traceway/backend/app/middleware"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
+	"github.com/tracewayapp/traceway/backend/app/services"
 	"database/sql"
 	"net/http"
 	"strconv"

@@ -1,4 +1,4 @@
-module backend
+module github.com/tracewayapp/traceway/backend
 
 go 1.25.1
 

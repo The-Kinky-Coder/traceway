@@ -1,4 +1,4 @@
-//go:build !localdist
+//go:build localdist
 
 package static
 
@@ -7,9 +7,9 @@ import (
 	"io/fs"
 )
 
-//go:embed all:frontend
+//go:embed all:dist
 var staticFiles embed.FS
 
 func GetStaticFS() (fs.FS, error) {
-	return fs.Sub(staticFiles, "frontend")
+	return fs.Sub(staticFiles, "dist")
 }

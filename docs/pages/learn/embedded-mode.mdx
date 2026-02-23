@@ -1,6 +1,6 @@
 # Embedded Mode
 
-Embedded mode runs a full Traceway server inside your Go process — using **SQLite** instead of PostgreSQL and **embedded ClickHouse** (via [chdb](https://github.com/chdb-io/chdb)) instead of an external server. No Docker, no infrastructure — just one `cmd.Run()` call and your app has local observability.
+Embedded mode runs a full Traceway server inside your Go process — using **SQLite** instead of PostgreSQL and **embedded ClickHouse** (via [chdb](https://github.com/chdb-io/chdb)) instead of an external server. No Docker, no infrastructure — just one `tracewaybackend.Run()` call and your app has local observability.
 
 This is intended for **local development only**. For production, use the [Docker Compose](/server/docker-compose) or [minimal](/server/minimal) deployment.
 
@@ -12,24 +12,21 @@ Install `libchdb` (the embedded ClickHouse C library). Supports macOS and Linux:
 curl -sL https://lib.chdb.io | bash
 ```
 
-All builds that use embedded mode must include the `chdb` build tag:
+Embedded ClickHouse is included by default in all builds. To exclude it (e.g., for production Docker images using an external ClickHouse), build with the `nochdb` tag:
 
 ```bash
-go build -tags chdb ./...
-go run -tags chdb .
+go build -tags nochdb ./...
 ```
-
-Without the tag, the binary compiles normally and embedded mode returns an error if requested.
 
 ## Quick Start
 
 Add the Traceway server module to your project:
 
 ```bash
-go get go.tracewayapp.com/server
+go get github.com/tracewayapp/traceway/backend
 ```
 
-Then call `cmd.Run()` somewhere in your application startup. A common pattern is guarding it behind an environment check so it only runs in development:
+Then call `tracewaybackend.Run()` somewhere in your application startup. A common pattern is guarding it behind an environment check so it only runs in development:
 
 ```go
 package main
@@ -38,17 +35,17 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"go.tracewayapp.com/server/cmd"
+	tracewaybackend "github.com/tracewayapp/traceway/backend"
 	tracewaygin "go.tracewayapp.com/tracewaygin"
 )
 
 func main() {
 	if os.Getenv("ENV") != "production" {
-		go cmd.Run(
-			cmd.WithPort(8085),
-			cmd.WithDefaultUser("admin@localhost.com", "admin"),
-			cmd.WithDefaultProject("Backend", "go", "backend-dev-token"),
-			cmd.WithDefaultProject("Frontend", "sveltekit", "frontend-dev-token"),
+		go tracewaybackend.Run(
+			tracewaybackend.WithPort(8085),
+			tracewaybackend.WithDefaultUser("admin@localhost.com", "admin"),
+			tracewaybackend.WithDefaultProject("Backend", "go", "backend-dev-token"),
+			tracewaybackend.WithDefaultProject("Frontend", "sveltekit", "frontend-dev-token"),
 		)
 	}
 
@@ -64,17 +61,17 @@ func main() {
 
 `WithDefaultProject` can be called multiple times to create separate projects — one for your Go backend, another for a frontend or any other service. Each project gets its own token, keeping telemetry organized in the dashboard.
 
-Run with the build tag:
+Run the application:
 
 ```bash
-go run -tags chdb .
+go run .
 ```
 
 The Traceway dashboard is available at `http://localhost:8085`. Log in with the credentials from `WithDefaultUser`.
 
 ## Configuration Options
 
-All options are passed to `cmd.Run()`. When any options are provided, embedded mode is activated automatically (SQLite + embedded ClickHouse).
+All options are passed to `tracewaybackend.Run()`. When any options are provided, embedded mode is activated automatically (SQLite + embedded ClickHouse).
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -90,12 +87,12 @@ All options are passed to `cmd.Run()`. When any options are provided, embedded m
 By default, both databases are **in-memory** — all data is lost when your application restarts. This is fine for quick debugging sessions, but if you want data to survive restarts, set file paths:
 
 ```go
-cmd.Run(
-	cmd.WithSQLitePath("./traceway.db"),
-	cmd.WithClickhousePath("./chdb-data"),
-	cmd.WithDefaultUser("admin@localhost.com", "admin"),
-	cmd.WithDefaultProject("Backend", "go", "backend-dev-token"),
-	cmd.WithDefaultProject("Frontend", "sveltekit", "frontend-dev-token"),
+tracewaybackend.Run(
+	tracewaybackend.WithSQLitePath("./traceway.db"),
+	tracewaybackend.WithClickhousePath("./chdb-data"),
+	tracewaybackend.WithDefaultUser("admin@localhost.com", "admin"),
+	tracewaybackend.WithDefaultProject("Backend", "go", "backend-dev-token"),
+	tracewaybackend.WithDefaultProject("Frontend", "sveltekit", "frontend-dev-token"),
 )
 ```
 

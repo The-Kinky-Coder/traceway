@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"backend/app/chdb"
-	"backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/chdb"
+	"github.com/tracewayapp/traceway/backend/app/models"
 	"context"
 
 	"github.com/ClickHouse/clickhouse-go/v2"

@@ -1,14 +1,14 @@
 package clientcontrollers
 
 import (
-	"backend/app/hooks"
-	"backend/app/middleware"
-	"backend/app/models"
-	"backend/app/models/clientmodels"
-	"backend/app/db"
-	"backend/app/repositories"
-	"backend/app/services"
-	"backend/app/storage"
+	"github.com/tracewayapp/traceway/backend/app/hooks"
+	"github.com/tracewayapp/traceway/backend/app/middleware"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/models/clientmodels"
+	"github.com/tracewayapp/traceway/backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
+	"github.com/tracewayapp/traceway/backend/app/services"
+	"github.com/tracewayapp/traceway/backend/app/storage"
 	"context"
 	"crypto/sha256"
 	"database/sql"
