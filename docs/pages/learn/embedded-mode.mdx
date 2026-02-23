@@ -1,5 +1,11 @@
 # Embedded Mode
 
+import { Callout } from 'nextra/components'
+
+<Callout type="warning">
+**Linux and macOS only.** Embedded mode uses [chdb](https://github.com/chdb-io/chdb) (embedded ClickHouse), which does **not** support Windows. If you're on Windows, use the [Docker Compose](/server/docker-compose) deployment instead.
+</Callout>
+
 Embedded mode runs a full Traceway server inside your Go process — using **SQLite** instead of PostgreSQL and **embedded ClickHouse** (via [chdb](https://github.com/chdb-io/chdb)) instead of an external server. No Docker, no infrastructure — just one `tracewaybackend.Run()` call and your app has local observability.
 
 This is intended for **local development only**. For production, use the [Docker Compose](/server/docker-compose) or [minimal](/server/minimal) deployment.
