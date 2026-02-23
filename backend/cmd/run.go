@@ -59,6 +59,7 @@ func Run(opts ...Option) {
 			o.serverURL = fmt.Sprintf("http://localhost:%d", port)
 		}
 		cfg.AppBaseURL = o.serverURL
+		gin.SetMode(gin.ReleaseMode)
 	}
 	config.Init(cfg)
 
