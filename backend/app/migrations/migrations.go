@@ -1,16 +1,16 @@
 package migrations
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/chdb"
-	"github.com/tracewayapp/traceway/backend/app/config"
-	"github.com/tracewayapp/traceway/backend/app/db"
 	"database/sql"
 	"embed"
 	"fmt"
-	"log"
 	"net/url"
 	"sort"
 	"strings"
+
+	"github.com/tracewayapp/traceway/backend/app/chdb"
+	"github.com/tracewayapp/traceway/backend/app/config"
+	"github.com/tracewayapp/traceway/backend/app/db"
 
 	"github.com/golang-migrate/migrate/v4"
 	migrateCh "github.com/golang-migrate/migrate/v4/database/clickhouse"
@@ -185,8 +185,6 @@ func runMigrationsSQLite(db *sql.DB) error {
 		if _, err := db.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version); err != nil {
 			return fmt.Errorf("failed to record migration version %s: %w", version, err)
 		}
-
-		log.Printf("Applied SQLite migration: %s", file)
 	}
 
 	return nil
@@ -249,8 +247,6 @@ func runMigrationsEmbeddedClickhouse(chDB *sql.DB) error {
 		if _, err := chDB.Exec("INSERT INTO schema_migrations_ch (version) VALUES (?)", version); err != nil {
 			return fmt.Errorf("failed to record migration version %s: %w", version, err)
 		}
-
-		log.Printf("Applied embedded ClickHouse migration: %s", file)
 	}
 
 	return nil
@@ -279,10 +275,6 @@ func Run(dbType string) error {
 	if dbType == "sqlite" {
 		if err := runMigrationsSQLite(db.DB); err != nil {
 			return fmt.Errorf("sqlite migrations failed: %w", err)
-		}
-
-		if len(ExtensionPostgresMigrations) > 0 {
-			log.Printf("Warning: %d extension PG migrations skipped (SQLite mode)", len(ExtensionPostgresMigrations))
 		}
 
 		return nil
