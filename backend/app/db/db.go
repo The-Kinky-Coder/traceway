@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/tracewayapp/traceway/backend/app/config"
 
@@ -94,7 +93,7 @@ func initSQLite() error {
 	DB = db
 	Driver = lit.SQLite
 
-	log.Printf("SQLite database opened at %s", path)
+	config.Logf("SQLite database opened at %s", path)
 
 	return nil
 }

@@ -3,7 +3,6 @@ package services
 import (
 	"github.com/tracewayapp/traceway/backend/app/config"
 	"fmt"
-	"log"
 	"net/smtp"
 	"strconv"
 )
@@ -45,9 +44,9 @@ func InitEmail() {
 	}
 
 	if enabled {
-		log.Println("Email service initialized with SMTP")
+		config.Logln("Email service initialized with SMTP")
 	} else {
-		log.Println("Email service initialized in log-only mode (SMTP disabled)")
+		config.Logln("Email service initialized in log-only mode (SMTP disabled)")
 	}
 }
 
@@ -71,7 +70,7 @@ The Traceway Team
 `, inviterName, orgName, inviteUrl)
 
 	if !e.enabled {
-		log.Printf("[EMAIL LOG] To: %s\nSubject: %s\nBody:\n%s", toEmail, subject, body)
+		config.Logf("[EMAIL LOG] To: %s\nSubject: %s\nBody:\n%s", toEmail, subject, body)
 		return nil
 	}
 
@@ -83,11 +82,11 @@ The Traceway Team
 
 	err := smtp.SendMail(addr, auth, e.from, []string{toEmail}, []byte(msg))
 	if err != nil {
-		log.Printf("Failed to send invitation email to %s: %v", toEmail, err)
+		config.Logf("Failed to send invitation email to %s: %v", toEmail, err)
 		return err
 	}
 
-	log.Printf("Invitation email sent to %s for organization %s", toEmail, orgName)
+	config.Logf("Invitation email sent to %s for organization %s", toEmail, orgName)
 	return nil
 }
 
@@ -115,7 +114,7 @@ The Traceway Team
 `, resetUrl)
 
 	if !e.enabled {
-		log.Printf("[EMAIL LOG] To: %s\nSubject: %s\nBody:\n%s", toEmail, subject, body)
+		config.Logf("[EMAIL LOG] To: %s\nSubject: %s\nBody:\n%s", toEmail, subject, body)
 		return nil
 	}
 
@@ -127,10 +126,10 @@ The Traceway Team
 
 	err := smtp.SendMail(addr, auth, e.from, []string{toEmail}, []byte(msg))
 	if err != nil {
-		log.Printf("Failed to send password reset email to %s: %v", toEmail, err)
+		config.Logf("Failed to send password reset email to %s: %v", toEmail, err)
 		return err
 	}
 
-	log.Printf("Password reset email sent to %s", toEmail)
+	config.Logf("Password reset email sent to %s", toEmail)
 	return nil
 }

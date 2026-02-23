@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"database/sql"
-	"log"
 	"time"
 
+	"github.com/tracewayapp/traceway/backend/app/config"
 	"github.com/tracewayapp/traceway/backend/app/db"
 	"github.com/tracewayapp/traceway/backend/app/models"
 	"github.com/tracewayapp/traceway/backend/app/repositories"
@@ -25,7 +25,7 @@ func seed(opts *options) error {
 			return struct{}{}, err
 		}
 		if existing != nil {
-			log.Printf("Seed: user %s already exists, skipping", opts.defaultUser.email)
+			config.Logf("Seed: user %s already exists, skipping", opts.defaultUser.email)
 			return struct{}{}, nil
 		}
 
@@ -61,10 +61,10 @@ func seed(opts *options) error {
 			if err := lit.InsertExistingUuid(tx, project); err != nil {
 				return struct{}{}, err
 			}
-			log.Printf("Seed: project %q connection string: %s@%s/api/report", project.Name, project.Token, opts.serverURL)
+			config.Logf("Seed: project %q connection string: %s@%s/api/report", project.Name, project.Token, opts.serverURL)
 		}
 
-		log.Printf("Seed: created user %s, org %q", user.Email, org.Name)
+		config.Logf("Seed: created user %s, org %q", user.Email, org.Name)
 		return struct{}{}, nil
 	})
 

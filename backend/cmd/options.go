@@ -5,6 +5,7 @@ type options struct {
 	clickhousePath  string
 	port            int
 	serverURL       string
+	disableLogging  bool
 	defaultUser     *defaultUserOpts
 	defaultProjects []defaultProjectOpts
 }
@@ -49,6 +50,12 @@ func WithServerURL(url string) Option {
 func WithDefaultUser(email, password string) Option {
 	return func(o *options) {
 		o.defaultUser = &defaultUserOpts{email: email, password: password}
+	}
+}
+
+func DisableLogging() Option {
+	return func(o *options) {
+		o.disableLogging = true
 	}
 }
 

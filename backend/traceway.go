@@ -12,4 +12,5 @@ var (
 	WithClickhousePath = cmd.WithClickhousePath
 	WithDefaultUser    = cmd.WithDefaultUser
 	WithDefaultProject = cmd.WithDefaultProject
+	DisableLogging     = cmd.DisableLogging
 )

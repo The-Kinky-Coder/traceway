@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -60,6 +59,9 @@ func Run(opts ...Option) {
 		}
 		cfg.AppBaseURL = o.serverURL
 		gin.SetMode(gin.ReleaseMode)
+		if o.disableLogging {
+			config.LoggingEnabled = false
+		}
 	}
 	config.Init(cfg)
 
@@ -143,7 +145,7 @@ func Run(opts ...Option) {
 	} else {
 		staticFS, err := static.GetStaticFS()
 		if err != nil {
-			log.Printf("Warning: Could not load static files: %v", err)
+			config.Logf("Warning: Could not load static files: %v", err)
 			staticFS = nil
 		}
 
@@ -173,7 +175,7 @@ func Run(opts ...Option) {
 			}
 			go func() {
 				port := ":" + portsList[i]
-				log.Println("Starting server on " + port)
+				config.Logln("Starting server on " + port)
 				if err := router.Run(port); err != nil {
 					panic(fmt.Errorf("Error starting server on port %s: %v", port, err))
 				}
@@ -190,9 +192,9 @@ func Run(opts ...Option) {
 func notifySystemd() {
 	sent, err := daemon.SdNotify(false, daemon.SdNotifyReady)
 	if err != nil {
-		log.Printf("Failed to notify systemd: %v", err)
+		config.Logf("Failed to notify systemd: %v", err)
 	} else if sent {
-		log.Println("Notified systemd that service is ready")
+		config.Logln("Notified systemd that service is ready")
 	}
 
 	go func() {

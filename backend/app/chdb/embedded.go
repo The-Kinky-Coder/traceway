@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -52,7 +51,7 @@ func initEmbedded() error {
 	EmbeddedDB = db
 
 	Conn = &embeddedConn{session: session}
-	log.Println("Initialized embedded ClickHouse (chdb)")
+	config.Logln("Initialized embedded ClickHouse (chdb)")
 	return nil
 }
 
