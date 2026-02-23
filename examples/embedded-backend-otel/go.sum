@@ -251,6 +251,8 @@ github.com/tracewayapp/traceway/backend v1.5.0 h1:eTwUnLW54GAIz87/Up8tKZo9KAAtWj
 github.com/tracewayapp/traceway/backend v1.5.0/go.mod h1:BgPfL0a44LtR7MKTu+2uMc/e6imUi9vNhRj8HQMwwsk=
 github.com/tracewayapp/traceway/backend v1.5.1 h1:xUGk/0qbEPYFZM45VnXKFjnvAl57ebSeOr71bOf7W1k=
 github.com/tracewayapp/traceway/backend v1.5.1/go.mod h1:BgPfL0a44LtR7MKTu+2uMc/e6imUi9vNhRj8HQMwwsk=
+github.com/tracewayapp/traceway/backend v1.5.2 h1:MK2KceJCPfDmCqRQti9YRWax531MaTpdQBNCfFm7Xb4=
+github.com/tracewayapp/traceway/backend v1.5.2/go.mod h1:BgPfL0a44LtR7MKTu+2uMc/e6imUi9vNhRj8HQMwwsk=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
 github.com/ugorji/go/codec v1.3.1 h1:waO7eEiFDwidsBN6agj1vJQ4AG7lh2yqXyOXqhgQuyY=
