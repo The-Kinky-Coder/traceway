@@ -166,7 +166,7 @@ func formatValue(v any) string {
 	case uuid.UUID:
 		return "'" + val.String() + "'"
 	case time.Time:
-		return "'" + val.UTC().Format("2006-01-02 15:04:05.000") + "'"
+		return "'" + val.UTC().Format("2006-01-02 15:04:05") + "'"
 	case bool:
 		if val {
 			return "1"
