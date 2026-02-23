@@ -1,16 +1,17 @@
 package cmd
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/db"
-	"github.com/tracewayapp/traceway/backend/app/models"
-	"github.com/tracewayapp/traceway/backend/app/repositories"
-	"github.com/tracewayapp/traceway/backend/app/services"
 	"database/sql"
 	"log"
 	"time"
 
+	"github.com/tracewayapp/traceway/backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
+	"github.com/tracewayapp/traceway/backend/app/services"
+
 	"github.com/google/uuid"
-	"github.com/tracewayapp/go-lightning/lit"
+	"github.com/tracewayapp/lit/v2"
 )
 
 func seed(opts *options) error {

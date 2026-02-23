@@ -1,12 +1,13 @@
 package repositories
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/models"
 	"database/sql"
 	"time"
 
+	"github.com/tracewayapp/traceway/backend/app/models"
+
 	"github.com/google/uuid"
-	"github.com/tracewayapp/lit"
+	"github.com/tracewayapp/lit/v2"
 )
 
 type sourceMapRepository struct{}

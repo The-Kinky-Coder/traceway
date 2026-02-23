@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/tracewayapp/lit"
+	"github.com/tracewayapp/lit/v2"
 )
 
 var ExtensionModelRegistrations []func(lit.Driver)

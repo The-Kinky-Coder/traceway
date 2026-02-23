@@ -11,8 +11,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/lib/pq v1.10.9
-	github.com/tracewayapp/go-lightning/lit v1.0.0
-	github.com/tracewayapp/lit v1.0.1
 	go.tracewayapp.com v1.0.1
 	go.tracewayapp.com/tracewaygin v0.4.3
 	modernc.org/sqlite v1.18.1
@@ -34,6 +32,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/segmentio/encoding v0.4.0 // indirect
+	github.com/tracewayapp/lit/v2 v2.0.2 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/grpc v1.75.1 // indirect

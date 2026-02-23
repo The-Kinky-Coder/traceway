@@ -1,12 +1,13 @@
 package repositories
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/models"
-	"github.com/tracewayapp/traceway/backend/app/db"
 	"database/sql"
 
+	"github.com/tracewayapp/traceway/backend/app/db"
+	"github.com/tracewayapp/traceway/backend/app/models"
+
 	"github.com/google/uuid"
-	"github.com/tracewayapp/lit"
+	"github.com/tracewayapp/lit/v2"
 )
 
 type widgetGroupRepository struct{}

@@ -249,12 +249,8 @@ github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
-github.com/tracewayapp/go-lightning/lit v1.0.0 h1:TKCFi5+inQck4SJ9w0kgNRL6WbAKeCExGQmQSVME2Lg=
-github.com/tracewayapp/go-lightning/lit v1.0.0/go.mod h1:Pm1robXO3m2YLD1ImsuYVc0iDdg6r9eS6NXWQIMglRQ=
-github.com/tracewayapp/lit v0.0.0-20260121181925-c304b0bdd0dc h1:NP15gcFZyggjUvxiBIQPGMtD4tkJZ2lhHpEn9i3drJY=
-github.com/tracewayapp/lit v0.0.0-20260121181925-c304b0bdd0dc/go.mod h1:Pm1robXO3m2YLD1ImsuYVc0iDdg6r9eS6NXWQIMglRQ=
-github.com/tracewayapp/lit v1.0.1 h1:l3cNBytH8DuO/oAQ82EldraJ/gWtl1Uhdpfxm6kUZnE=
-github.com/tracewayapp/lit v1.0.1/go.mod h1:6jyNfEHuT5vwjSdHWhUO3uunyC0UulFeJdn6DKkxkMY=
+github.com/tracewayapp/lit/v2 v2.0.2 h1:ZE8UlRWUOX3OZvY2UfbYSDcDUpBoTNLXl70Qujs0mqs=
+github.com/tracewayapp/lit/v2 v2.0.2/go.mod h1:i3zPBL5NtFgZxpxT9PvC2w4gm3S9IzDv4K5JSALtlfs=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
 github.com/ugorji/go/codec v1.3.0 h1:Qd2W2sQawAfG8XSvzwhBeoGq71zXOC/Q1E9y/wUcsUA=

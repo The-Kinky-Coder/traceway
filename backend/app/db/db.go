@@ -1,13 +1,14 @@
 package db
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/config"
 	"database/sql"
 	"fmt"
 	"log"
 
+	"github.com/tracewayapp/traceway/backend/app/config"
+
 	_ "github.com/lib/pq"
-	"github.com/tracewayapp/go-lightning/lit"
+	"github.com/tracewayapp/lit/v2"
 	_ "modernc.org/sqlite"
 )
 
