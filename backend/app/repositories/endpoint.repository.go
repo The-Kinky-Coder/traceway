@@ -27,7 +27,7 @@ func (e *endpointRepository) InsertAsync(ctx context.Context, lines []models.End
 				attributesJSON = string(attributesBytes)
 			}
 		}
-		if err := batch.Append(t.Id, t.ProjectId, t.Endpoint, t.Duration, t.RecordedAt, t.StatusCode, t.BodySize, t.ClientIP, attributesJSON, t.AppVersion, t.ServerName); err != nil {
+		if err := batch.Append(t.Id, t.ProjectId, t.Endpoint, int64(t.Duration), t.RecordedAt, t.StatusCode, t.BodySize, t.ClientIP, attributesJSON, t.AppVersion, t.ServerName); err != nil {
 			return err
 		}
 	}

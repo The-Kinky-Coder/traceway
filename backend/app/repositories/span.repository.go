@@ -29,7 +29,7 @@ func (r *spanRepository) InsertAsync(ctx context.Context, spans []models.Span) e
 			s.ProjectId,
 			s.Name,
 			s.StartTime,
-			s.Duration,
+			int64(s.Duration),
 			s.RecordedAt,
 		); err != nil {
 			return err

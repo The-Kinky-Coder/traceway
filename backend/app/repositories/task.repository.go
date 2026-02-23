@@ -27,7 +27,7 @@ func (e *taskRepository) InsertAsync(ctx context.Context, lines []models.Task) e
 				attributesJSON = string(attributesBytes)
 			}
 		}
-		if err := batch.Append(t.Id, t.ProjectId, t.TaskName, t.Duration, t.RecordedAt, t.ClientIP, attributesJSON, t.AppVersion, t.ServerName); err != nil {
+		if err := batch.Append(t.Id, t.ProjectId, t.TaskName, int64(t.Duration), t.RecordedAt, t.ClientIP, attributesJSON, t.AppVersion, t.ServerName); err != nil {
 			return err
 		}
 	}
