@@ -1,3 +1,6 @@
 {
-  "index": "Quick Start"
+  "index": "Quick Start",
+  "exceptions": "Exceptions",
+  "spans": "Spans",
+  "metrics": "Metrics"
 }

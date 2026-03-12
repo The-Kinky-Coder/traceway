@@ -1,0 +1,190 @@
+# Spans
+
+The OTel auto-instrumentation creates spans for HTTP requests automatically. To measure sub-operations like database queries, API calls, or business logic, create spans manually using the OpenTelemetry PHP API.
+
+## Creating a Span
+
+Use the tracer to start and end spans:
+
+```php
+use OpenTelemetry\API\Globals;
+
+$tracer = Globals::tracerProvider()->getTracer('app');
+
+$span = $tracer->spanBuilder('process-order')->startSpan();
+try {
+    $this->processOrder($orderId);
+} finally {
+    $span->end();
+}
+```
+
+Always end spans in a `finally` block to ensure they are closed even if an exception is thrown.
+
+## Activating a Span
+
+To make a span the current active span (so child spans and exceptions are linked to it), activate it with a scope:
+
+```php
+use OpenTelemetry\API\Globals;
+
+$tracer = Globals::tracerProvider()->getTracer('app');
+
+$span = $tracer->spanBuilder('checkout')->startSpan();
+$scope = $span->activate();
+try {
+    // Any spans created here become children of "checkout"
+    $this->validateCart($cart);
+    $this->processPayment($payment);
+    $this->sendConfirmation($order);
+} finally {
+    $scope->detach();
+    $span->end();
+}
+```
+
+## Nested Spans
+
+Create child spans to break down an operation into sub-steps:
+
+```php
+use OpenTelemetry\API\Globals;
+
+$tracer = Globals::tracerProvider()->getTracer('app');
+
+$parentSpan = $tracer->spanBuilder('create-order')->startSpan();
+$parentScope = $parentSpan->activate();
+try {
+    // Child span: validate
+    $validateSpan = $tracer->spanBuilder('validate-items')->startSpan();
+    $this->validateItems($items);
+    $validateSpan->end();
+
+    // Child span: inventory check
+    $inventorySpan = $tracer->spanBuilder('check-inventory')->startSpan();
+    $this->checkInventory($items);
+    $inventorySpan->end();
+
+    // Child span: payment
+    $paymentSpan = $tracer->spanBuilder('process-payment')->startSpan();
+    $this->processPayment($paymentInfo);
+    $paymentSpan->end();
+} finally {
+    $parentScope->detach();
+    $parentSpan->end();
+}
+```
+
+Child spans are automatically linked to the active parent span.
+
+## Adding Attributes
+
+Attach metadata to spans for filtering and debugging:
+
+```php
+$span = $tracer->spanBuilder('db-query')->startSpan();
+$span->setAttribute('db.system', 'mysql');
+$span->setAttribute('db.statement', 'SELECT * FROM users WHERE id = ?');
+$span->setAttribute('db.row_count', $rowCount);
+$span->end();
+```
+
+## Recording Errors on Spans
+
+When a span's operation fails, record the exception and set the status:
+
+```php
+use OpenTelemetry\API\Trace\StatusCode;
+
+$span = $tracer->spanBuilder('external-api-call')->startSpan();
+try {
+    $response = $this->httpClient->request('GET', 'https://api.example.com/data');
+} catch (\Throwable $e) {
+    $span->recordException($e);
+    $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
+    throw $e;
+} finally {
+    $span->end();
+}
+```
+
+## Span Naming Conventions
+
+Use descriptive names that indicate the operation type:
+
+| Good | Bad |
+|------|-----|
+| `db.users.find` | `query` |
+| `cache.sessions.get` | `cache` |
+| `stripe.charge` | `api` |
+| `s3.upload-image` | `upload` |
+| `email.send-welcome` | `send` |
+
+## Database Wrapper Example
+
+```php
+use OpenTelemetry\API\Globals;
+
+class TracedRepository
+{
+    private $tracer;
+
+    public function __construct(
+        private readonly Connection $connection,
+    ) {
+        $this->tracer = Globals::tracerProvider()->getTracer('app');
+    }
+
+    public function query(string $sql, array $params = []): array
+    {
+        $span = $this->tracer->spanBuilder('db.query')->startSpan();
+        $span->setAttribute('db.statement', $sql);
+        try {
+            $result = $this->connection->fetchAllAssociative($sql, $params);
+            $span->setAttribute('db.row_count', count($result));
+            return $result;
+        } catch (\Throwable $e) {
+            $span->recordException($e);
+            $span->setStatus(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR, $e->getMessage());
+            throw $e;
+        } finally {
+            $span->end();
+        }
+    }
+}
+```
+
+## HTTP Client Wrapper Example
+
+```php
+use OpenTelemetry\API\Globals;
+
+class TracedHttpClient
+{
+    private $tracer;
+
+    public function __construct(
+        private readonly HttpClientInterface $client,
+    ) {
+        $this->tracer = Globals::tracerProvider()->getTracer('app');
+    }
+
+    public function request(string $method, string $url, array $options = []): ResponseInterface
+    {
+        $span = $this->tracer->spanBuilder("http.{$method}")->startSpan();
+        $span->setAttribute('http.method', $method);
+        $span->setAttribute('http.url', $url);
+        try {
+            $response = $this->client->request($method, $url, $options);
+            $span->setAttribute('http.status_code', $response->getStatusCode());
+            return $response;
+        } catch (\Throwable $e) {
+            $span->recordException($e);
+            $span->setStatus(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR, $e->getMessage());
+            throw $e;
+        } finally {
+            $span->end();
+        }
+    }
+}
+```
