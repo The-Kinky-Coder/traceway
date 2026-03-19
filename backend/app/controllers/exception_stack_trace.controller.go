@@ -1,10 +1,6 @@
 package controllers
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/middleware"
-	"github.com/tracewayapp/traceway/backend/app/models"
-	"github.com/tracewayapp/traceway/backend/app/repositories"
-	"github.com/tracewayapp/traceway/backend/app/storage"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,6 +8,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/tracewayapp/traceway/backend/app/middleware"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
+	"github.com/tracewayapp/traceway/backend/app/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -228,7 +229,7 @@ func (e exceptionStackTraceController) FindById(c *gin.Context) {
 
 	exceptionId, err := uuid.Parse(c.Param("exceptionId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid exception id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid exception id"})
 		return
 	}
 

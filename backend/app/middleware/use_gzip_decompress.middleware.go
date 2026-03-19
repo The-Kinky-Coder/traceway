@@ -15,7 +15,7 @@ func UseGzip(c *gin.Context) {
 
 	gzReader, err := gzip.NewReader(c.Request.Body)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid gzip"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid gzip"})
 		return
 	}
 	c.Request.Body = gzReader

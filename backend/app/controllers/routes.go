@@ -128,6 +128,24 @@ func RegisterControllers(router *gin.RouterGroup) {
 	router.POST("/projects/source-map-token", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, ProjectController.GenerateSourceMapToken)
 	router.POST("/sourcemaps/upload", middleware.UseSourceMapAuth, SourceMapController.Upload)
 
+	// Notification channels
+	router.GET("/notification-channels", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.Transactional, NotificationChannelController.List)
+	router.POST("/notification-channels", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationChannelController.Create)
+	router.PUT("/notification-channels/:id", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationChannelController.Update)
+	router.DELETE("/notification-channels/:id", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationChannelController.Delete)
+	router.POST("/notification-channels/:id/test", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, NotificationChannelController.Test)
+
+	// Notification rules
+	router.GET("/notification-rules", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.Transactional, NotificationRuleController.List)
+	router.POST("/notification-rules", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationRuleController.Create)
+	router.PUT("/notification-rules/:id", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationRuleController.Update)
+	router.DELETE("/notification-rules/:id", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationRuleController.Delete)
+	router.POST("/notification-rules/:id/toggle", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationRuleController.Toggle)
+	router.POST("/notification-rules/:id/snooze", middleware.UseAppAuth, middleware.RequireProjectAccess, middleware.RequireWriteAccess, middleware.Transactional, NotificationRuleController.Snooze)
+
+	// Notification history
+	router.POST("/notification-history", middleware.UseAppAuth, middleware.RequireProjectAccess, NotificationHistoryController.List)
+
 	for _, register := range ExtensionRoutes {
 		register(router)
 	}

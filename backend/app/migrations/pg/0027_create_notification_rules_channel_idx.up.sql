@@ -1,0 +1,1 @@
+CREATE INDEX idx_notification_rules_channel ON notification_rules(channel_id);

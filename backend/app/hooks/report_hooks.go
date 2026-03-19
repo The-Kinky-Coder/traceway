@@ -1,13 +1,19 @@
 package hooks
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/google/uuid"
+)
 
 type ReportEvent struct {
-	OrganizationId int
-	EndpointCount  int
-	ErrorCount     int
-	TaskCount      int
-	RecordingCount int
+	OrganizationId  int
+	ProjectId       uuid.UUID
+	EndpointCount   int
+	ErrorCount      int
+	TaskCount       int
+	RecordingCount  int
+	ExceptionHashes []string
 }
 
 var (

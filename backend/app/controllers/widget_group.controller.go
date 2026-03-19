@@ -1,15 +1,16 @@
 package controllers
 
 import (
-	"github.com/tracewayapp/traceway/backend/app/middleware"
-	"github.com/tracewayapp/traceway/backend/app/models"
-	"github.com/tracewayapp/traceway/backend/app/repositories"
 	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tracewayapp/traceway/backend/app/middleware"
+	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/repositories"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -72,7 +73,7 @@ func (c *widgetGroupController) Create(ctx *gin.Context) {
 
 	var req CreateWidgetGroupRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -135,7 +136,7 @@ func (c *widgetGroupController) GetWithWidgets(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid widget group id"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid widget group id"})
 		return
 	}
 
@@ -147,7 +148,7 @@ func (c *widgetGroupController) GetWithWidgets(ctx *gin.Context) {
 		return
 	}
 	if group == nil || group.ProjectId != projectId {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "widget group not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Widget group not found"})
 		return
 	}
 
@@ -178,13 +179,13 @@ func (c *widgetGroupController) Update(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid widget group id"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid widget group id"})
 		return
 	}
 
 	var req CreateWidgetGroupRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -206,7 +207,7 @@ func (c *widgetGroupController) Update(ctx *gin.Context) {
 		return
 	}
 	if existing == nil || existing.ProjectId != projectId {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "widget group not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Widget group not found"})
 		return
 	}
 
@@ -244,7 +245,7 @@ func (c *widgetGroupController) Delete(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid widget group id"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid widget group id"})
 		return
 	}
 

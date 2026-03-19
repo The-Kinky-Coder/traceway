@@ -1,10 +1,11 @@
 package controllers
 
 import (
+	"net/http"
+
 	"github.com/tracewayapp/traceway/backend/app/middleware"
 	"github.com/tracewayapp/traceway/backend/app/models"
 	"github.com/tracewayapp/traceway/backend/app/repositories"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -28,11 +29,11 @@ type TaskMessageInfo struct {
 }
 
 type TaskDetailResponse struct {
-	Task     *models.Task       `json:"task"`
-	Spans    []models.Span      `json:"spans"`
-	HasSpans bool               `json:"hasSpans"`
-	Exception   *TaskExceptionInfo `json:"exception,omitempty"`
-	Messages    []TaskMessageInfo  `json:"messages"`
+	Task      *models.Task       `json:"task"`
+	Spans     []models.Span      `json:"spans"`
+	HasSpans  bool               `json:"hasSpans"`
+	Exception *TaskExceptionInfo `json:"exception,omitempty"`
+	Messages  []TaskMessageInfo  `json:"messages"`
 }
 
 func (t taskDetailController) GetTaskDetail(c *gin.Context) {
@@ -44,7 +45,7 @@ func (t taskDetailController) GetTaskDetail(c *gin.Context) {
 
 	taskId, err := uuid.Parse(c.Param("taskId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid taskId"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid taskId"})
 		return
 	}
 
@@ -103,11 +104,11 @@ func (t taskDetailController) GetTaskDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, TaskDetailResponse{
-		Task:     task,
-		Spans:    spans,
-		HasSpans: len(spans) > 0,
-		Exception:   exceptionInfo,
-		Messages:    messages,
+		Task:      task,
+		Spans:     spans,
+		HasSpans:  len(spans) > 0,
+		Exception: exceptionInfo,
+		Messages:  messages,
 	})
 }
 

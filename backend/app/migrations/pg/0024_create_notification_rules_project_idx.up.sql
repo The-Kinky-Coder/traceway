@@ -1,0 +1,1 @@
+CREATE INDEX idx_notification_rules_project ON notification_rules(project_id);

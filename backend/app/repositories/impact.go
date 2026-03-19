@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func computeImpactReason(
+func ComputeImpactReason(
 	endpoint string,
 	total, satisfiedCount, toleratingCount, badCount, clientErrorCount uint64,
 	p99Ns float64,

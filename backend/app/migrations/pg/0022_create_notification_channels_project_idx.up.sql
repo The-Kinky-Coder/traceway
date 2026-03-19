@@ -1,0 +1,1 @@
+CREATE INDEX idx_notification_channels_project ON notification_channels(project_id);

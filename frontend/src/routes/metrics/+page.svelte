@@ -396,7 +396,7 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+	<div class="mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<h2 class="text-2xl font-bold tracking-tight">Metrics</h2>
 		<div class="flex items-center gap-2">
 			<TimeRangePicker

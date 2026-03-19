@@ -1,10 +1,11 @@
 package controllers
 
 import (
+	"net/http"
+
 	"github.com/tracewayapp/traceway/backend/app/middleware"
 	"github.com/tracewayapp/traceway/backend/app/models"
 	"github.com/tracewayapp/traceway/backend/app/repositories"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -28,11 +29,11 @@ type EndpointMessageInfo struct {
 }
 
 type EndpointDetailResponse struct {
-	Endpoint *models.Endpoint       `json:"endpoint"`
-	Spans    []models.Span          `json:"spans"`
-	HasSpans bool                   `json:"hasSpans"`
-	Exception   *EndpointExceptionInfo `json:"exception,omitempty"`
-	Messages    []EndpointMessageInfo  `json:"messages"`
+	Endpoint  *models.Endpoint       `json:"endpoint"`
+	Spans     []models.Span          `json:"spans"`
+	HasSpans  bool                   `json:"hasSpans"`
+	Exception *EndpointExceptionInfo `json:"exception,omitempty"`
+	Messages  []EndpointMessageInfo  `json:"messages"`
 }
 
 func (t endpointDetailController) GetEndpointDetail(c *gin.Context) {
@@ -44,7 +45,7 @@ func (t endpointDetailController) GetEndpointDetail(c *gin.Context) {
 
 	endpointId, err := uuid.Parse(c.Param("endpointId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid endpointId"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpointId"})
 		return
 	}
 
@@ -103,11 +104,11 @@ func (t endpointDetailController) GetEndpointDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, EndpointDetailResponse{
-		Endpoint: endpoint,
-		Spans:    spans,
-		HasSpans: len(spans) > 0,
-		Exception:   exceptionInfo,
-		Messages:    messages,
+		Endpoint:  endpoint,
+		Spans:     spans,
+		HasSpans:  len(spans) > 0,
+		Exception: exceptionInfo,
+		Messages:  messages,
 	})
 }
 

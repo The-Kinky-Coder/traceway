@@ -216,7 +216,7 @@ func (e *endpointRepository) FindGroupedByEndpoint(ctx context.Context, projectI
 		s.P95Duration = time.Duration(p95)
 		s.P99Duration = time.Duration(p99)
 		s.AvgDuration = time.Duration(avg)
-		s.ImpactReason = computeImpactReason(s.Endpoint, s.Count, satisfiedCount, toleratingCount, badCount, clientErrorCount, p99, offsetMs)
+		s.ImpactReason = ComputeImpactReason(s.Endpoint, s.Count, satisfiedCount, toleratingCount, badCount, clientErrorCount, p99, offsetMs)
 		stats = append(stats, s)
 	}
 
@@ -556,7 +556,7 @@ func (e *endpointRepository) FindWorstEndpoints(ctx context.Context, projectId u
 		s.P95Duration = time.Duration(p95)
 		s.P99Duration = time.Duration(p99)
 		s.AvgDuration = time.Duration(avg)
-		s.ImpactReason = computeImpactReason(s.Endpoint, s.Count, satisfiedCount, toleratingCount, badCount, clientErrorCount, p99, offsetMs)
+		s.ImpactReason = ComputeImpactReason(s.Endpoint, s.Count, satisfiedCount, toleratingCount, badCount, clientErrorCount, p99, offsetMs)
 		stats = append(stats, s)
 	}
 

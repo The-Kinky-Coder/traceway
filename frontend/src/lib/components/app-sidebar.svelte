@@ -2,6 +2,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { useSidebar } from '$lib/components/ui/sidebar';
 	import {
+		Bell,
 		Bug,
 		Link2,
 		ChartNoAxesCombined,
@@ -40,6 +41,7 @@
 			title: 'Metrics',
 			stickyParams: ['preset', 'from', 'to']
 		},
+		{ Icon: Bell, href: '/notifications', title: 'Alerts', stickyParams: ['preset', 'from', 'to'] },
 		{ Icon: Link2, href: '/connection', title: 'Connection', stickyParams: [] }
 	];
 

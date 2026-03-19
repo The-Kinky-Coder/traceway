@@ -9,6 +9,7 @@ import (
 	"github.com/tracewayapp/traceway/backend/app/middleware"
 	"github.com/tracewayapp/traceway/backend/app/migrations"
 	"github.com/tracewayapp/traceway/backend/app/models"
+	"github.com/tracewayapp/traceway/backend/app/notifications"
 	"github.com/tracewayapp/traceway/backend/app/services"
 	"github.com/tracewayapp/traceway/backend/app/storage"
 	"github.com/tracewayapp/traceway/backend/static"
@@ -115,6 +116,8 @@ func Run(opts ...Option) {
 	for _, hook := range PostStartupHooks {
 		hook(ctx)
 	}
+
+	notifications.StartEvaluator(ctx)
 
 	var router *gin.Engine
 	if o != nil && o.disableLogging {

@@ -6,5 +6,6 @@
   "attributes": "Attributes",
   "spans": "Spans",
   "metrics": "Metrics",
+  "alerts": "Alerts",
   "embedded-mode": "Embedded Mode"
 }
