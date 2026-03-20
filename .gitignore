@@ -40,3 +40,5 @@ backend/static/dist/
 /backend/storage/recordings
 /backend/storage
 /docs/.wrangler
+/examples/devtesting-embedded/frontend/node_modules
+/examples/devtesting-embedded/storage

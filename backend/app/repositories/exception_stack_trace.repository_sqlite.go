@@ -30,8 +30,8 @@ func (e *exceptionStackTraceRepository) InsertAsync(ctx context.Context, lines [
 	defer tx.Rollback()
 
 	stmt, err := tx.PrepareContext(ctx,
-		`INSERT INTO exception_stack_traces (id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		`INSERT INTO exception_stack_traces (id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -60,6 +60,12 @@ func (e *exceptionStackTraceRepository) InsertAsync(ctx context.Context, lines [
 			traceIdStr = est.TraceId.String()
 		}
 
+		var distributedTraceIdStr *string
+		if est.DistributedTraceId != nil {
+			s := est.DistributedTraceId.String()
+			distributedTraceIdStr = &s
+		}
+
 		if _, err := stmt.ExecContext(ctx,
 			est.Id.String(),
 			est.ProjectId.String(),
@@ -72,6 +78,7 @@ func (e *exceptionStackTraceRepository) InsertAsync(ctx context.Context, lines [
 			est.AppVersion,
 			est.ServerName,
 			isMessage,
+			distributedTraceIdStr,
 		); err != nil {
 			return err
 		}
@@ -199,7 +206,7 @@ func (e *exceptionStackTraceRepository) FindByHash(ctx context.Context, projectI
 	group.FirstSeen, _ = time.Parse(time.RFC3339Nano, firstSeenStr)
 
 	rows, err := db.DB.QueryContext(ctx,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
 		FROM exception_stack_traces
 		WHERE project_id = ? AND exception_hash = ?
 		ORDER BY recorded_at DESC LIMIT ? OFFSET ?`,
@@ -381,7 +388,7 @@ func (e *exceptionStackTraceRepository) IsArchived(ctx context.Context, projectI
 
 func (e *exceptionStackTraceRepository) FindExceptionByTraceId(ctx context.Context, projectId uuid.UUID, traceId uuid.UUID) (*models.ExceptionStackTrace, error) {
 	row := db.DB.QueryRowContext(ctx,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
 		FROM exception_stack_traces
 		WHERE project_id = ? AND trace_id = ? AND is_message = 0
 		LIMIT 1`,
@@ -393,7 +400,7 @@ func (e *exceptionStackTraceRepository) FindExceptionByTraceId(ctx context.Conte
 
 func (e *exceptionStackTraceRepository) FindAllByTraceId(ctx context.Context, projectId uuid.UUID, traceId uuid.UUID) ([]models.ExceptionStackTrace, error) {
 	rows, err := db.DB.QueryContext(ctx,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
 		FROM exception_stack_traces
 		WHERE project_id = ? AND trace_id = ?
 		ORDER BY recorded_at ASC`,
@@ -417,7 +424,7 @@ func (e *exceptionStackTraceRepository) FindAllByTraceId(ctx context.Context, pr
 
 func (e *exceptionStackTraceRepository) FindById(ctx context.Context, projectId uuid.UUID, id uuid.UUID) (*models.ExceptionStackTrace, error) {
 	row := db.DB.QueryRowContext(ctx,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
 		FROM exception_stack_traces
 		WHERE project_id = ? AND id = ?
 		LIMIT 1`,
@@ -435,9 +442,10 @@ func scanExceptionStackTraceRow(row *sql.Row) *models.ExceptionStackTrace {
 	var idStr, projectIdStr, traceIdStr string
 	var recordedAtStr, attributesJSON string
 	var isMessage int
+	var distributedTraceIdStr sql.NullString
 
 	err := row.Scan(&idStr, &projectIdStr, &traceIdStr, &est.TraceType, &est.ExceptionHash, &est.StackTrace,
-		&recordedAtStr, &attributesJSON, &est.AppVersion, &est.ServerName, &isMessage)
+		&recordedAtStr, &attributesJSON, &est.AppVersion, &est.ServerName, &isMessage, &distributedTraceIdStr)
 	if err != nil {
 		return nil
 	}
@@ -448,6 +456,12 @@ func scanExceptionStackTraceRow(row *sql.Row) *models.ExceptionStackTrace {
 		parsed, err := uuid.Parse(traceIdStr)
 		if err == nil {
 			est.TraceId = &parsed
+		}
+	}
+	if distributedTraceIdStr.Valid && distributedTraceIdStr.String != "" {
+		parsed, err := uuid.Parse(distributedTraceIdStr.String)
+		if err == nil {
+			est.DistributedTraceId = &parsed
 		}
 	}
 	est.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
@@ -467,9 +481,10 @@ func scanExceptionStackTrace(rows *sql.Rows) *models.ExceptionStackTrace {
 	var idStr, projectIdStr, traceIdStr string
 	var recordedAtStr, attributesJSON string
 	var isMessage int
+	var distributedTraceIdStr sql.NullString
 
 	err := rows.Scan(&idStr, &projectIdStr, &traceIdStr, &est.TraceType, &est.ExceptionHash, &est.StackTrace,
-		&recordedAtStr, &attributesJSON, &est.AppVersion, &est.ServerName, &isMessage)
+		&recordedAtStr, &attributesJSON, &est.AppVersion, &est.ServerName, &isMessage, &distributedTraceIdStr)
 	if err != nil {
 		return nil
 	}
@@ -482,6 +497,12 @@ func scanExceptionStackTrace(rows *sql.Rows) *models.ExceptionStackTrace {
 			est.TraceId = &parsed
 		}
 	}
+	if distributedTraceIdStr.Valid && distributedTraceIdStr.String != "" {
+		parsed, err := uuid.Parse(distributedTraceIdStr.String)
+		if err == nil {
+			est.DistributedTraceId = &parsed
+		}
+	}
 	est.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
 	est.IsMessage = isMessage == 1
 
@@ -492,6 +513,35 @@ func scanExceptionStackTrace(rows *sql.Rows) *models.ExceptionStackTrace {
 	}
 
 	return &est
+}
+
+func (e *exceptionStackTraceRepository) FindByDistributedTraceId(ctx context.Context, distributedTraceId uuid.UUID, projectIds []uuid.UUID) ([]models.ExceptionStackTrace, error) {
+	if len(projectIds) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(projectIds)), ",")
+	query := `SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
+		FROM exception_stack_traces
+		WHERE distributed_trace_id = ? AND project_id IN (` + placeholders + `) AND is_message = 0
+		ORDER BY recorded_at ASC`
+	args := []interface{}{distributedTraceId.String()}
+	for _, pid := range projectIds {
+		args = append(args, pid.String())
+	}
+	rows, err := db.QueryerFromContext(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var results []models.ExceptionStackTrace
+	for rows.Next() {
+		o := scanExceptionStackTrace(rows)
+		if o == nil {
+			return nil, fmt.Errorf("failed to scan exception stack trace row")
+		}
+		results = append(results, *o)
+	}
+	return results, nil
 }
 
 var ExceptionStackTraceRepository = exceptionStackTraceRepository{}

@@ -20,6 +20,7 @@ export type TraceDetail = {
 	attributes: Record<string, string> | null;
 	appVersion: string;
 	serverName: string;
+	distributedTraceId?: string;
 };
 
 export type ExceptionInfo = {

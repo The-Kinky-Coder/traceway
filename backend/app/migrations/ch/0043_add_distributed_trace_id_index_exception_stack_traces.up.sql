@@ -1,0 +1,1 @@
+ALTER TABLE exception_stack_traces ADD INDEX idx_distributed_trace_id_exceptions distributed_trace_id TYPE bloom_filter(0.001) GRANULARITY 1

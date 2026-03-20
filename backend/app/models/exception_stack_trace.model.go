@@ -15,9 +15,10 @@ type ExceptionStackTrace struct {
 	StackTrace      string            `json:"stackTrace" ch:"stack_trace"`
 	RecordedAt      time.Time         `json:"recordedAt" ch:"recorded_at"`
 	Attributes      map[string]string `json:"attributes" ch:"attributes"`
-	AppVersion      string            `json:"appVersion" ch:"app_version"`
-	ServerName      string            `json:"serverName" ch:"server_name"`
-	IsMessage       bool              `json:"isMessage" ch:"is_message"`
+	AppVersion         string            `json:"appVersion" ch:"app_version"`
+	ServerName         string            `json:"serverName" ch:"server_name"`
+	IsMessage          bool              `json:"isMessage" ch:"is_message"`
+	DistributedTraceId *uuid.UUID        `json:"distributedTraceId,omitempty" ch:"distributed_trace_id"`
 }
 
 type ExceptionTrendPoint struct {

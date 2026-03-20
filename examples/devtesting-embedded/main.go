@@ -1,0 +1,79 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"math/rand/v2"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	tracewaybackend "github.com/tracewayapp/traceway/backend"
+	traceway "go.tracewayapp.com"
+	tracewaygin "go.tracewayapp.com/tracewaygin"
+)
+
+const (
+	appPort        = 8080
+	backendToken    = "backend-dev-token"
+	frontendToken   = "frontend-dev-token"
+	monitoringToken = "monitoring-dev-token"
+)
+
+func main() {
+	go tracewaybackend.Run(
+		tracewaybackend.WithSQLitePath("./storage/traceway.db"),
+		tracewaybackend.WithPort(8082),
+		tracewaybackend.WithDefaultUser("admin@localhost.com", "admin"),
+		tracewaybackend.WithDefaultProject("Backend API", "go", backendToken),
+		tracewaybackend.WithDefaultProject("React Frontend", "react", frontendToken),
+		tracewaybackend.WithDefaultProject("Traceway Monitoring", "go", monitoringToken),
+		tracewaybackend.WithMonitoringURL(monitoringToken+"@http://localhost:8082/api/report"),
+		tracewaybackend.DisableLogging(),
+	)
+
+	router := gin.Default()
+
+	router.Use(func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+		}
+		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Expose-Headers", "traceway-trace-id")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
+
+	router.Use(tracewaygin.New(
+		backendToken+"@http://localhost:8082/api/report",
+		tracewaygin.WithOnErrorRecording(tracewaygin.RecordingQuery|tracewaygin.RecordingBody|tracewaygin.RecordingHeader|tracewaygin.RecordingUrl),
+	))
+
+	router.GET("/api/test-error", func(c *gin.Context) {
+		time.Sleep(time.Duration(20+rand.IntN(80)) * time.Millisecond)
+		err := errors.New("simulated backend error for distributed trace testing")
+		traceway.CaptureExceptionWithContext(c.Request.Context(), err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	})
+
+	router.GET("/api/test-success", func(c *gin.Context) {
+		time.Sleep(time.Duration(20+rand.IntN(80)) * time.Millisecond)
+		c.JSON(http.StatusOK, gin.H{"message": "success"})
+	})
+
+	fmt.Println()
+	fmt.Println("===========================================")
+	fmt.Printf("  App API:    http://localhost:%d\n", appPort)
+	fmt.Println("  Dashboard:  http://localhost:8082")
+	fmt.Println("  Frontend:   http://localhost:5173")
+	fmt.Println("  Login:      admin@localhost.com / admin")
+	fmt.Println("===========================================")
+	fmt.Println()
+
+	router.Run(fmt.Sprintf(":%d", appPort))
+}

@@ -19,6 +19,7 @@
 	import PageHeader from '$lib/components/issues/page-header.svelte';
 	import { createSmartBackHandler } from '$lib/utils/back-navigation';
 	import { resolve } from '$app/paths';
+	import DistributedTraceCard from '$lib/components/distributed-trace/distributed-trace-card.svelte';
 
 	let { data } = $props();
 
@@ -266,5 +267,9 @@
 				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		{#if response.endpoint.distributedTraceId}
+			<DistributedTraceCard distributedTraceId={response.endpoint.distributedTraceId} />
+		{/if}
 	{/if}
 </div>

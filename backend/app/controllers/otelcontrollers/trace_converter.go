@@ -60,17 +60,23 @@ func convertTraces(projectId uuid.UUID, req *coltracepb.ExportTraceServiceReques
 				endTime := nanoToTime(span.EndTimeUnixNano)
 				duration := endTime.Sub(startTime)
 
+				otelDistributedTraceId := otelTraceIDToUUID(span.TraceId)
+
 				if isRoot {
 					if span.Kind == tracepb.Span_SPAN_KIND_SERVER && hasHTTPAttributes(spanAttrs) {
-						endpoints = append(endpoints, buildEndpoint(
+						ep := buildEndpoint(
 							traceId, projectId, span, spanAttrs, allAttrs,
 							startTime, duration, serverName, appVersion,
-						))
+						)
+						ep.DistributedTraceId = &otelDistributedTraceId
+						endpoints = append(endpoints, ep)
 					} else if span.Kind == tracepb.Span_SPAN_KIND_CONSUMER {
-						tasks = append(tasks, buildTask(
+						t := buildTask(
 							traceId, projectId, span, allAttrs,
 							startTime, endTime, duration, serverName, appVersion,
-						))
+						)
+						t.DistributedTraceId = &otelDistributedTraceId
+						tasks = append(tasks, t)
 					} else {
 						continue
 					}
@@ -104,6 +110,7 @@ func convertTraces(projectId uuid.UUID, req *coltracepb.ExportTraceServiceReques
 							projectId, traceId, traceType, event,
 							serverName, appVersion,
 						)
+						exc.DistributedTraceId = &otelDistributedTraceId
 						exceptions = append(exceptions, exc)
 					}
 				}

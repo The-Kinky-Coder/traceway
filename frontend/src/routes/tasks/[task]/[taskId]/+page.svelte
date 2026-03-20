@@ -18,6 +18,7 @@
 	import PageHeader from '$lib/components/issues/page-header.svelte';
 	import { createSmartBackHandler } from '$lib/utils/back-navigation';
 	import { resolve } from '$app/paths';
+	import DistributedTraceCard from '$lib/components/distributed-trace/distributed-trace-card.svelte';
 
 	type TaskDetailResponse = {
 		task: {
@@ -29,6 +30,7 @@
 			attributes: Record<string, string> | null;
 			serverName: string;
 			appVersion: string;
+			distributedTraceId?: string;
 		};
 		exception?: {
 			exceptionHash: string;
@@ -261,5 +263,9 @@
 				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		{#if response.task.distributedTraceId}
+			<DistributedTraceCard distributedTraceId={response.task.distributedTraceId} />
+		{/if}
 	{/if}
 </div>

@@ -1,12 +1,13 @@
 package cmd
 
 type options struct {
-	sqlitePath      string
-	port            int
-	serverURL       string
-	disableLogging  bool
-	defaultUser     *defaultUserOpts
-	defaultProjects []defaultProjectOpts
+	sqlitePath           string
+	port                 int
+	serverURL            string
+	disableLogging       bool
+	defaultUser          *defaultUserOpts
+	defaultProjects      []defaultProjectOpts
+	monitoringTracewayURL string
 }
 
 type defaultUserOpts struct {
@@ -57,5 +58,11 @@ func WithDefaultProject(name, framework, token string) Option {
 		o.defaultProjects = append(o.defaultProjects, defaultProjectOpts{
 			name: name, framework: framework, token: token,
 		})
+	}
+}
+
+func WithMonitoringURL(url string) Option {
+	return func(o *options) {
+		o.monitoringTracewayURL = url
 	}
 }

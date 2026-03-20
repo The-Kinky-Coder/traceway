@@ -10,6 +10,7 @@
 	import { LabelValue } from '../ui/label-value';
 	import { projectsState, isFrontendFramework } from '$lib/state/projects.svelte';
 	import SessionReplay from './session-replay.svelte';
+	import DistributedTraceCard from '$lib/components/distributed-trace/distributed-trace-card.svelte';
 
 	interface Props {
 		occurrence: ExceptionOccurrence;
@@ -148,3 +149,7 @@
 		{/if}
 	</Card.Content>
 </Card.Root>
+
+{#if linkedTrace?.distributedTraceId || occurrence.distributedTraceId}
+	<DistributedTraceCard distributedTraceId={(linkedTrace?.distributedTraceId ?? occurrence.distributedTraceId)!} />
+{/if}

@@ -80,7 +80,8 @@
 							duration: txData.duration,
 							statusCode: txData.statusCode || 0,
 							recordedAt: txData.recordedAt,
-							traceType: isTask ? 'task' : 'endpoint'
+							traceType: isTask ? 'task' : 'endpoint',
+							distributedTraceId: txData.distributedTraceId
 						};
 					}
 				} catch (txError) {

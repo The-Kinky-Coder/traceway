@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -35,7 +34,6 @@ func dispatch(rule *models.NotificationRuleWithChannel, msg Message) {
 
 	adapter, err := NewAdapter(channel.ChannelType, channel.Config)
 	if err != nil {
-		log.Printf("[notif] dispatch: ruleId=%d adapter error: %v", rule.Id, err)
 		recordHistory(rule, msg, "failed", err.Error())
 		recordFiredNotification(rule, msg, "failed", err.Error())
 		return
@@ -52,14 +50,12 @@ func dispatch(rule *models.NotificationRuleWithChannel, msg Message) {
 
 	err = adapter.Send(ctx, msg)
 	if err != nil {
-		log.Printf("[notif] dispatch: ruleId=%d send FAILED: %v", rule.Id, err)
 		recordHistory(rule, msg, "failed", err.Error())
 		recordFiredNotification(rule, msg, "failed", err.Error())
 		traceway.CaptureException(fmt.Errorf("notification dispatch failed (rule=%d, channel=%s): %w", rule.Id, rule.ChannelName, err))
 		return
 	}
 
-	log.Printf("[notif] dispatch: ruleId=%d sent successfully via %s", rule.Id, channel.ChannelType)
 	recordHistory(rule, msg, "sent", "")
 	recordFiredNotification(rule, msg, "sent", "")
 	cooldowns.recordFire(rule.Id)
@@ -123,7 +119,6 @@ func recordHistory(rule *models.NotificationRuleWithChannel, msg Message, status
 		return repositories.NotificationHistoryRepository.Create(tx, history)
 	})
 	if dbErr != nil {
-		log.Printf("[notif] recordHistory FAILED: ruleId=%d subject=%q err=%v", rule.Id, msg.Subject, dbErr)
 		traceway.CaptureException(fmt.Errorf("failed to record notification history: %w", dbErr))
 	}
 }

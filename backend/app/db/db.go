@@ -102,6 +102,22 @@ func GetDB() *sql.DB {
 	return DB
 }
 
+type ctxKey struct{}
+
+func ContextWithTx(ctx context.Context, tx *sql.Tx) context.Context {
+	return context.WithValue(ctx, ctxKey{}, tx)
+}
+
+func QueryerFromContext(ctx context.Context) interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+} {
+	if tx, ok := ctx.Value(ctxKey{}).(*sql.Tx); ok && tx != nil {
+		return tx
+	}
+	return DB
+}
+
 func ExecuteTransaction[T any](f func(tx *sql.Tx) (T, error)) (T, error) {
 	tx, err := DB.Begin()
 

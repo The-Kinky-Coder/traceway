@@ -57,6 +57,7 @@ func Run(opts ...Option) {
 			o.serverURL = fmt.Sprintf("http://localhost:%d", port)
 		}
 		cfg.AppBaseURL = o.serverURL
+		cfg.MonitoringTracewayURL = o.monitoringTracewayURL
 		gin.SetMode(gin.ReleaseMode)
 		if o.disableLogging {
 			config.LoggingEnabled = false

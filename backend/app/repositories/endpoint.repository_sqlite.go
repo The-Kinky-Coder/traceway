@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,8 +31,8 @@ func (e *endpointRepository) InsertAsync(ctx context.Context, lines []models.End
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO endpoints (id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO endpoints (id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -44,11 +45,16 @@ func (e *endpointRepository) InsertAsync(ctx context.Context, lines []models.End
 				attributesJSON = string(b)
 			}
 		}
+		var distributedTraceIdStr *string
+		if t.DistributedTraceId != nil {
+			s := t.DistributedTraceId.String()
+			distributedTraceIdStr = &s
+		}
 		if _, err := stmt.ExecContext(ctx,
 			t.Id.String(), t.ProjectId.String(), t.Endpoint,
 			int64(t.Duration), t.RecordedAt.UTC().Format(time.RFC3339Nano),
 			t.StatusCode, t.BodySize, t.ClientIP, attributesJSON,
-			t.AppVersion, t.ServerName,
+			t.AppVersion, t.ServerName, distributedTraceIdStr,
 		); err != nil {
 			return err
 		}
@@ -86,7 +92,7 @@ func (e *endpointRepository) FindAll(ctx context.Context, projectId uuid.UUID, f
 		orderBy = "recorded_at"
 	}
 
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name
+	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
 		FROM endpoints
 		WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
 		ORDER BY ` + orderBy + ` DESC LIMIT ? OFFSET ?`
@@ -246,7 +252,7 @@ func (e *endpointRepository) FindByEndpoint(ctx context.Context, projectId uuid.
 		sortDir = "ASC"
 	}
 
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name
+	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
 		FROM endpoints
 		WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ?
 		ORDER BY ` + orderBy + ` ` + sortDir + ` LIMIT ? OFFSET ?`
@@ -266,16 +272,17 @@ func (e *endpointRepository) FindByEndpoint(ctx context.Context, projectId uuid.
 }
 
 func (e *endpointRepository) FindById(ctx context.Context, projectId, endpointId uuid.UUID) (*models.Endpoint, error) {
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name
+	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
 		FROM endpoints
 		WHERE project_id = ? AND id = ?
 		LIMIT 1`
 
 	var t models.Endpoint
 	var idStr, projectIdStr, recordedAtStr, attributesJSON string
+	var distributedTraceIdStr sql.NullString
 	err := db.DB.QueryRowContext(ctx, query, projectId.String(), endpointId.String()).Scan(
 		&idStr, &projectIdStr, &t.Endpoint, &t.Duration, &recordedAtStr,
-		&t.StatusCode, &t.BodySize, &t.ClientIP, &attributesJSON, &t.AppVersion, &t.ServerName)
+		&t.StatusCode, &t.BodySize, &t.ClientIP, &attributesJSON, &t.AppVersion, &t.ServerName, &distributedTraceIdStr)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -286,6 +293,12 @@ func (e *endpointRepository) FindById(ctx context.Context, projectId, endpointId
 	t.Id, _ = uuid.Parse(idStr)
 	t.ProjectId, _ = uuid.Parse(projectIdStr)
 	t.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
+	if distributedTraceIdStr.Valid && distributedTraceIdStr.String != "" {
+		parsed, err := uuid.Parse(distributedTraceIdStr.String)
+		if err == nil {
+			t.DistributedTraceId = &parsed
+		}
+	}
 	if attributesJSON != "" && attributesJSON != "{}" {
 		if err := json.Unmarshal([]byte(attributesJSON), &t.Attributes); err != nil {
 			t.Attributes = nil
@@ -713,13 +726,20 @@ func scanEndpoints(rows *sql.Rows) ([]models.Endpoint, error) {
 	for rows.Next() {
 		var t models.Endpoint
 		var idStr, projectIdStr, recordedAtStr, attributesJSON string
+		var distributedTraceIdStr sql.NullString
 		if err := rows.Scan(&idStr, &projectIdStr, &t.Endpoint, &t.Duration, &recordedAtStr,
-			&t.StatusCode, &t.BodySize, &t.ClientIP, &attributesJSON, &t.AppVersion, &t.ServerName); err != nil {
+			&t.StatusCode, &t.BodySize, &t.ClientIP, &attributesJSON, &t.AppVersion, &t.ServerName, &distributedTraceIdStr); err != nil {
 			return nil, err
 		}
 		t.Id, _ = uuid.Parse(idStr)
 		t.ProjectId, _ = uuid.Parse(projectIdStr)
 		t.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
+		if distributedTraceIdStr.Valid && distributedTraceIdStr.String != "" {
+			parsed, err := uuid.Parse(distributedTraceIdStr.String)
+			if err == nil {
+				t.DistributedTraceId = &parsed
+			}
+		}
 		if attributesJSON != "" && attributesJSON != "{}" {
 			if err := json.Unmarshal([]byte(attributesJSON), &t.Attributes); err != nil {
 				t.Attributes = nil
@@ -949,6 +969,27 @@ func getTopEndpointsByMetric(ctx context.Context, pidStr, fromStr, toStr, metric
 	}
 
 	return result, nil
+}
+
+func (e *endpointRepository) FindByDistributedTraceId(ctx context.Context, distributedTraceId uuid.UUID, projectIds []uuid.UUID) ([]models.Endpoint, error) {
+	if len(projectIds) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(projectIds)), ",")
+	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
+		FROM endpoints
+		WHERE distributed_trace_id = ? AND project_id IN (` + placeholders + `)
+		ORDER BY recorded_at ASC`
+	args := []interface{}{distributedTraceId.String()}
+	for _, pid := range projectIds {
+		args = append(args, pid.String())
+	}
+	rows, err := db.QueryerFromContext(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanEndpoints(rows)
 }
 
 var EndpointRepository = endpointRepository{}

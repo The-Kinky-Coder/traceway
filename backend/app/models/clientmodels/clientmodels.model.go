@@ -16,6 +16,7 @@ type ClientExceptionStackTrace struct {
 	Attributes         map[string]string `json:"attributes"`
 	IsMessage          bool              `json:"isMessage"`
 	SessionRecordingId *string           `json:"sessionRecordingId"`
+	DistributedTraceId *string           `json:"distributedTraceId"`
 }
 
 func (c *ClientExceptionStackTrace) ToExceptionStackTrace(exceptionHash, appVersion, serverName string) models.ExceptionStackTrace {
@@ -31,16 +32,24 @@ func (c *ClientExceptionStackTrace) ToExceptionStackTrace(exceptionHash, appVers
 		}
 	}
 
+	var distributedTraceId *uuid.UUID
+	if c.DistributedTraceId != nil {
+		if parsed, err := uuid.Parse(*c.DistributedTraceId); err == nil {
+			distributedTraceId = &parsed
+		}
+	}
+
 	return models.ExceptionStackTrace{
-		ExceptionHash: exceptionHash,
-		TraceId:       traceId,
-		TraceType:     traceType,
-		StackTrace:    c.StackTrace,
-		RecordedAt:    c.RecordedAt,
-		Attributes:    c.Attributes,
-		IsMessage:     c.IsMessage,
-		AppVersion:    appVersion,
-		ServerName:    serverName,
+		ExceptionHash:      exceptionHash,
+		TraceId:            traceId,
+		TraceType:          traceType,
+		StackTrace:         c.StackTrace,
+		RecordedAt:         c.RecordedAt,
+		Attributes:         c.Attributes,
+		IsMessage:          c.IsMessage,
+		AppVersion:         appVersion,
+		ServerName:         serverName,
+		DistributedTraceId: distributedTraceId,
 	}
 }
 
@@ -68,16 +77,17 @@ func (c *ClientMetricRecord) ToMetricPoint(serverName string) models.MetricPoint
 }
 
 type ClientTrace struct {
-	Id         string            `json:"id"`
-	Endpoint   string            `json:"endpoint"`
-	Duration   time.Duration     `json:"duration"`
-	RecordedAt time.Time         `json:"recordedAt"`
-	StatusCode int               `json:"statusCode"`
-	BodySize   int               `json:"bodySize"`
-	ClientIP   string            `json:"clientIP"`
-	Attributes map[string]string `json:"attributes"`
-	Spans      []*ClientSpan     `json:"spans"`
-	IsTask     bool              `json:"isTask"`
+	Id                 string            `json:"id"`
+	Endpoint           string            `json:"endpoint"`
+	Duration           time.Duration     `json:"duration"`
+	RecordedAt         time.Time         `json:"recordedAt"`
+	StatusCode         int               `json:"statusCode"`
+	BodySize           int               `json:"bodySize"`
+	ClientIP           string            `json:"clientIP"`
+	Attributes         map[string]string `json:"attributes"`
+	Spans              []*ClientSpan     `json:"spans"`
+	IsTask             bool              `json:"isTask"`
+	DistributedTraceId string            `json:"distributedTraceId"`
 }
 
 // ParsedId returns the trace ID as uuid.UUID
@@ -88,31 +98,43 @@ func (c *ClientTrace) ParsedId() uuid.UUID {
 	return uuid.New()
 }
 
+func (c *ClientTrace) parsedDistributedTraceId() *uuid.UUID {
+	if c.DistributedTraceId == "" {
+		return nil
+	}
+	if parsed, err := uuid.Parse(c.DistributedTraceId); err == nil {
+		return &parsed
+	}
+	return nil
+}
+
 func (c *ClientTrace) ToEndpoint(appVersion, serverName string) models.Endpoint {
 	return models.Endpoint{
-		Id:         c.ParsedId(),
-		Endpoint:   c.Endpoint,
-		Duration:   c.Duration,
-		RecordedAt: c.RecordedAt,
-		StatusCode: int16(c.StatusCode),
-		BodySize:   int32(c.BodySize),
-		ClientIP:   c.ClientIP,
-		Attributes: c.Attributes,
-		AppVersion: appVersion,
-		ServerName: serverName,
+		Id:                 c.ParsedId(),
+		Endpoint:           c.Endpoint,
+		Duration:           c.Duration,
+		RecordedAt:         c.RecordedAt,
+		StatusCode:         int16(c.StatusCode),
+		BodySize:           int32(c.BodySize),
+		ClientIP:           c.ClientIP,
+		Attributes:         c.Attributes,
+		AppVersion:         appVersion,
+		ServerName:         serverName,
+		DistributedTraceId: c.parsedDistributedTraceId(),
 	}
 }
 
 func (c *ClientTrace) ToTask(appVersion, serverName string) models.Task {
 	return models.Task{
-		Id:         c.ParsedId(),
-		TaskName:   c.Endpoint,
-		Duration:   c.Duration,
-		RecordedAt: c.RecordedAt,
-		ClientIP:   c.ClientIP,
-		Attributes: c.Attributes,
-		AppVersion: appVersion,
-		ServerName: serverName,
+		Id:                 c.ParsedId(),
+		TaskName:           c.Endpoint,
+		Duration:           c.Duration,
+		RecordedAt:         c.RecordedAt,
+		ClientIP:           c.ClientIP,
+		Attributes:         c.Attributes,
+		AppVersion:         appVersion,
+		ServerName:         serverName,
+		DistributedTraceId: c.parsedDistributedTraceId(),
 	}
 }
 

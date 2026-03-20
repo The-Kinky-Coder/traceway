@@ -18,6 +18,7 @@ export type ExceptionOccurrence = {
     serverName: string;
     isMessage: boolean;
     endpoint: string;
+    distributedTraceId?: string;
 };
 
 export type LinkedTrace = {
@@ -27,4 +28,5 @@ export type LinkedTrace = {
     statusCode: number;
     recordedAt: string;
     traceType: 'endpoint' | 'task';
+    distributedTraceId?: string;
 };

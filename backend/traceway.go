@@ -15,5 +15,6 @@ var (
 	WithSQLitePath     = cmd.WithSQLitePath
 	WithDefaultUser    = cmd.WithDefaultUser
 	WithDefaultProject = cmd.WithDefaultProject
+	WithMonitoringURL  = cmd.WithMonitoringURL
 	DisableLogging     = cmd.DisableLogging
 )
