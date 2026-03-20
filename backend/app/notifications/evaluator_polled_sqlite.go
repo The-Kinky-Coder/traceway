@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
 	"sync"
 	"time"
 
@@ -63,7 +62,7 @@ func evaluateErrorRateThreshold(ctx context.Context, rule *models.NotificationRu
 
 	var total, errors int64
 	err := db.DB.QueryRowContext(ctx,
-		"SELECT COUNT(*) as total, SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) as errors FROM endpoints WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?",
+		"SELECT COUNT(*) as total, COALESCE(SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END), 0) as errors FROM endpoints WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?",
 		projectId.String(), from.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano)).Scan(&total, &errors)
 	if err != nil {
 		return nil, err
@@ -214,8 +213,8 @@ func evaluateApdexDrop(ctx context.Context, rule *models.NotificationRule, proje
 	var total, satisfied, tolerating int64
 	err := db.DB.QueryRowContext(ctx,
 		`SELECT COUNT(*) as total,
-			SUM(CASE WHEN duration <= 750000000 AND status_code < 500 THEN 1 ELSE 0 END) as satisfied,
-			SUM(CASE WHEN duration > 750000000 AND duration <= 1500000000 AND status_code < 500 THEN 1 ELSE 0 END) as tolerating
+			COALESCE(SUM(CASE WHEN duration <= 750000000 AND status_code < 500 THEN 1 ELSE 0 END), 0) as satisfied,
+			COALESCE(SUM(CASE WHEN duration > 750000000 AND duration <= 1500000000 AND status_code < 500 THEN 1 ELSE 0 END), 0) as tolerating
 		FROM endpoints WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?`,
 		projectId.String(), from.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano)).Scan(&total, &satisfied, &tolerating)
 	if err != nil {
@@ -340,7 +339,6 @@ func evaluateNoData(ctx context.Context, rule *models.NotificationRule, projectI
 	}
 
 	threshold := time.Now().UTC().Add(-time.Duration(cfg.SilenceMinutes) * time.Minute)
-	thresholdStr := threshold.Format(time.RFC3339Nano)
 	pid := projectId.String()
 
 	if cfg.DataType == "any" {
@@ -389,7 +387,6 @@ func evaluateNoData(ctx context.Context, rule *models.NotificationRule, projectI
 		}
 	}
 
-	_ = thresholdStr
 	projectName := getProjectName(projectId)
 	msg := buildNoDataMessage(cfg.DataType, cfg.SilenceMinutes, projectName)
 	return &EvalResult{Fired: true, Message: msg}, nil
@@ -573,7 +570,7 @@ func evaluateEndpointErrorRate(ctx context.Context, rule *models.NotificationRul
 
 	var total, errors int64
 	err := db.DB.QueryRowContext(ctx,
-		"SELECT COUNT(*) as total, SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) as errors FROM endpoints WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ?",
+		"SELECT COUNT(*) as total, COALESCE(SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END), 0) as errors FROM endpoints WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ?",
 		pid, cfg.Endpoint, from.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano)).Scan(&total, &errors)
 	if err != nil {
 		return nil, err
@@ -625,10 +622,10 @@ func evaluateImpactScore(ctx context.Context, rule *models.NotificationRule, pro
 		COUNT(*) as total_count,
 		MAX(e.recorded_at) as last_seen,
 		COALESCE(s.offset_ms, 0) as offset_ms,
-		SUM(CASE WHEN e.duration <= (750000000 + COALESCE(s.offset_ms, 0) * 1000000) AND e.status_code < 500 THEN 1 ELSE 0 END) as satisfied_count,
-		SUM(CASE WHEN e.duration > (750000000 + COALESCE(s.offset_ms, 0) * 1000000) AND e.duration <= (1500000000 + COALESCE(s.offset_ms, 0) * 1000000) AND e.status_code < 500 THEN 1 ELSE 0 END) as tolerating_count,
-		SUM(CASE WHEN e.duration > (1500000000 + COALESCE(s.offset_ms, 0) * 1000000) OR e.status_code >= 500 THEN 1 ELSE 0 END) as bad_count,
-		SUM(CASE WHEN e.status_code >= 400 AND e.status_code < 500 THEN 1 ELSE 0 END) as client_error_count
+		COALESCE(SUM(CASE WHEN e.duration <= (750000000 + COALESCE(s.offset_ms, 0) * 1000000) AND e.status_code < 500 THEN 1 ELSE 0 END), 0) as satisfied_count,
+		COALESCE(SUM(CASE WHEN e.duration > (750000000 + COALESCE(s.offset_ms, 0) * 1000000) AND e.duration <= (1500000000 + COALESCE(s.offset_ms, 0) * 1000000) AND e.status_code < 500 THEN 1 ELSE 0 END), 0) as tolerating_count,
+		COALESCE(SUM(CASE WHEN e.duration > (1500000000 + COALESCE(s.offset_ms, 0) * 1000000) OR e.status_code >= 500 THEN 1 ELSE 0 END), 0) as bad_count,
+		COALESCE(SUM(CASE WHEN e.status_code >= 400 AND e.status_code < 500 THEN 1 ELSE 0 END), 0) as client_error_count
 	FROM endpoints e
 	LEFT JOIN slow_endpoints s ON e.endpoint = s.endpoint AND e.project_id = s.project_id
 	WHERE e.project_id = ? AND e.recorded_at >= ? AND e.recorded_at <= ?
@@ -808,15 +805,3 @@ func evaluateImpactScoreHigh(ctx context.Context, rule *models.NotificationRule,
 func evaluateImpactScoreMedium(ctx context.Context, rule *models.NotificationRule, projectId uuid.UUID) (*EvalResult, error) {
 	return evaluateImpactScore(ctx, rule, projectId, 0.25, buildImpactScoreMediumMessage)
 }
-
-// helper to sort by impact
-type byImpact []struct {
-	endpoint string
-	impact   float64
-}
-
-func (a byImpact) Len() int           { return len(a) }
-func (a byImpact) Less(i, j int) bool { return a[i].impact > a[j].impact }
-func (a byImpact) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
-var _ = sort.Sort

@@ -105,7 +105,7 @@ See the [embedded mode guide](https://docs.tracewayapp.com/learn/embedded-mode) 
 |-----|---------|
 | *(none)* | SQLite storage — embedded mode, zero dependencies. This is the default. |
 | `pgch` | ClickHouse + PostgreSQL storage — standalone server mode. |
-| `localdist` | Embeds the pre-built frontend into the Go binary. Used in Docker builds. |
+| `localdist` | Embeds frontend from `static/dist/` instead of `static/frontend/`. Used by traceway-cloud to inject billing UI. |
 
 ```bash
 # Embedded mode (SQLite, default)
@@ -113,9 +113,6 @@ cd backend && go build ./cmd/traceway
 
 # Standalone server (ClickHouse + PostgreSQL)
 cd backend && go build -tags pgch ./cmd/traceway
-
-# Docker image (embedded frontend + CH/PG)
-cd backend && go build -tags "localdist,pgch" ./cmd/traceway
 ```
 
 ## Running Tests

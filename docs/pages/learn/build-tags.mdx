@@ -8,7 +8,7 @@ The Traceway backend uses Go build tags to switch between storage backends and t
 |-----|---------|
 | *(none)* | **SQLite** storage — embedded mode, zero external dependencies. This is the default. |
 | `pgch` | **ClickHouse + PostgreSQL** storage — standalone server mode. |
-| `localdist` | Embeds the pre-built frontend static files into the Go binary. Used in Docker builds. |
+| `localdist` | Embeds frontend from `static/dist/` instead of `static/frontend/`. Used by traceway-cloud to inject billing UI into the frontend build. Not needed for open-source builds. |
 
 ## Building
 
@@ -17,7 +17,7 @@ The Traceway backend uses Go build tags to switch between storage backends and t
 No tags needed — a plain `go build` gives you the embedded SQLite backend:
 
 ```bash
-cd backend && go build ./...
+cd backend && go build ./cmd/traceway
 ```
 
 This is what library consumers get when they `go get github.com/tracewayapp/traceway/backend` and call `tracewaybackend.Run()`.
@@ -25,20 +25,20 @@ This is what library consumers get when they `go get github.com/tracewayapp/trac
 ### Standalone server (ClickHouse + PostgreSQL)
 
 ```bash
-cd backend && go build -tags pgch ./...
+cd backend && go build -tags pgch ./cmd/traceway
 ```
 
 Requires `CLICKHOUSE_SERVER`, `POSTGRES_HOST`, and the other environment variables to be configured.
 
 ### Docker image
 
-The Dockerfiles combine both `localdist` (embedded frontend) and `pgch` (CH+PG storage):
+The Dockerfiles build the frontend and embed it into the Go binary with the `pgch` tag:
 
 ```bash
-go build -tags "localdist,pgch" ./...
+go build -tags pgch ./cmd/traceway
 ```
 
-You don't need `localdist` for local development — run the frontend dev server separately with `cd frontend && npm run dev`.
+The frontend is embedded from `static/frontend/` which the Docker build populates from the SvelteKit build output. You don't need to embed the frontend for local development — run the frontend dev server separately with `cd frontend && npm run dev`.
 
 ## Running Tests
 
