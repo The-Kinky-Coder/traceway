@@ -54,6 +54,10 @@ func (t endpointDetailController) GetEndpointDetail(c *gin.Context) {
 	endpoint, err := repositories.EndpointRepository.FindById(c, projectId, endpointId)
 	span.End()
 	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("error loading endpoint: %w", err))
+		return
+	}
+	if endpoint == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
 		return
 	}

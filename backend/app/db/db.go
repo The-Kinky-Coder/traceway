@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -8,22 +9,14 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/tracewayapp/lit/v2"
-	_ "modernc.org/sqlite"
 )
 
-var DB *sql.DB
+var DB *sql.DB          // PostgreSQL-replacement: relational/config data (transactional)
+var TelemetryDB *sql.DB // ClickHouse-replacement: append-only telemetry data (non-transactional)
 var Driver lit.Driver = lit.PostgreSQL
 
 func IsSQLite() bool {
 	return Driver == lit.SQLite
-}
-
-func Init() error {
-	cfg := config.Config
-	if cfg.DBType == "sqlite" {
-		return initSQLite()
-	}
-	return initPostgres()
 }
 
 func initPostgres() error {
@@ -62,38 +55,6 @@ func initPostgres() error {
 
 	DB = db
 	Driver = lit.PostgreSQL
-
-	return nil
-}
-
-func initSQLite() error {
-	path := config.Config.SQLitePath
-	if path == "" {
-		path = "./traceway.db"
-	}
-
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		return fmt.Errorf("failed to open sqlite connection: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping sqlite: %w", err)
-	}
-
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("failed to enable foreign keys: %w", err)
-	}
-	if _, err := db.Exec("PRAGMA journal_mode = WAL"); err != nil {
-		return fmt.Errorf("failed to set WAL mode: %w", err)
-	}
-
-	db.SetMaxOpenConns(1)
-
-	DB = db
-	Driver = lit.SQLite
-
-	config.Logf("SQLite database opened at %s", path)
 
 	return nil
 }

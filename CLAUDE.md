@@ -665,6 +665,50 @@ func (c *ReportController) Report(ctx *gin.Context) {
 - **ClickHouse**: High-volume append-only telemetry with time-series aggregations, batch inserts only (transactions, exceptions, metric points, spans, tasks, sessions)
 - Rule of thumb: "Will this data be updated after creation?" → PostgreSQL. "Is this immutable, time-stamped, high-volume data queried with aggregations?" → ClickHouse.
 
+#### SQLite Dual-Database Architecture (self-hosted mode)
+
+In SQLite mode (`DB_TYPE=sqlite`), the backend uses **two separate SQLite databases** mirroring the PostgreSQL/ClickHouse split:
+
+| Database | Variable | File | Purpose | Transactions |
+|----------|----------|------|---------|-------------|
+| **Main DB** | `db.DB` | `traceway.db` | PostgreSQL replacement — relational/config data | Yes (`middleware.Transactional`, `db.ExecuteTransaction`) |
+| **Telemetry DB** | `db.TelemetryDB` | `traceway_telemetry.db` | ClickHouse replacement — append-only telemetry | No — direct inserts without transactions |
+
+**Main DB tables** (`db.DB` — transactional, uses lit with `*sql.Tx`):
+- `users`, `organizations`, `organization_users`, `projects`, `invitations`
+- `source_maps`, `metric_registry`, `widget_groups`, `widget_group_widgets`
+- `notification_channels`, `notification_rules`, `notification_history`
+
+**Telemetry DB tables** (`db.TelemetryDB` — non-transactional, uses lit with `db.TelemetryDB` directly):
+- `endpoints`, `tasks`, `exception_stack_traces`, `spans`, `metric_points`
+- `session_recordings`, `archived_exceptions`, `slow_endpoints`, `fired_notifications`
+
+**How to access each database in repository code:**
+
+```go
+// Main DB (PostgreSQL replacement) — use transactions via middleware or ExecuteTransaction
+// Repositories receive *sql.Tx from middleware.GetTx(ctx) or db.ExecuteTransaction
+user, err := lit.SelectSingleNamed[models.User](tx, "SELECT ... FROM users WHERE ...", lit.P{...})
+
+// Telemetry DB (ClickHouse replacement) — use db.TelemetryDB directly, no transactions
+results, err := lit.SelectNamed[endpointRow](db.TelemetryDB, "SELECT ... FROM endpoints WHERE ...", lit.P{...})
+
+// Telemetry inserts — no transaction wrapping
+for _, item := range items {
+    row := modelToRow(item)
+    lit.InsertExistingUuid(db.TelemetryDB, &row)
+}
+```
+
+**Migrations** are split into two directories:
+- `backend/app/migrations/sqlite/` — runs on `db.DB` (main)
+- `backend/app/migrations/sqlite_telemetry/` — runs on `db.TelemetryDB` (telemetry)
+
+**SQLite-specific type helpers** (`backend/app/repositories/sqlite_types.go`):
+- `SQLiteTime` — implements `sql.Scanner`/`driver.Valuer` for `time.Time` ↔ SQLite TEXT
+- `SQLiteJSONMap` — implements `sql.Scanner`/`driver.Valuer` for `map[string]string` ↔ SQLite JSON TEXT
+- Row types (e.g., `endpointRow`, `taskRow`) wrap domain models with these types for lit compatibility
+
 #### Organization Roles
 | Role | Description |
 |------|-------------|

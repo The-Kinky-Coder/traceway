@@ -98,6 +98,14 @@ func (d distributedTraceController) GetDistributedTrace(c *gin.Context) {
 		}
 	}
 
+	matchedIds := make(map[uuid.UUID]bool)
+	for _, ep := range endpoints {
+		matchedIds[ep.Id] = true
+	}
+	for _, t := range tasks {
+		matchedIds[t.Id] = true
+	}
+
 	var nodes []DistributedTraceNode
 
 	for _, ep := range endpoints {
@@ -122,6 +130,23 @@ func (d distributedTraceController) GetDistributedTrace(c *gin.Context) {
 			Exception:   exceptionByTraceId[t.Id],
 		}
 		nodes = append(nodes, node)
+	}
+
+	for _, exc := range exceptions {
+		if exc.TraceId != nil && matchedIds[*exc.TraceId] {
+			continue
+		}
+		nodes = append(nodes, DistributedTraceNode{
+			ProjectId:   exc.ProjectId,
+			ProjectName: projectNameMap[exc.ProjectId],
+			TraceType:   "exception",
+			Spans:       []models.Span{},
+			Exception: &EndpointExceptionInfo{
+				ExceptionHash: exc.ExceptionHash,
+				StackTrace:    exc.StackTrace,
+				RecordedAt:    exc.RecordedAt.Format("2006-01-02T15:04:05Z07:00"),
+			},
+		})
 	}
 
 	if nodes == nil {

@@ -4,9 +4,6 @@ package repositories
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -14,9 +11,112 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tracewayapp/lit/v2"
 	"github.com/tracewayapp/traceway/backend/app/db"
 	"github.com/tracewayapp/traceway/backend/app/models"
 )
+
+type endpoint struct {
+	Id                 uuid.UUID     `lit:"id"`
+	ProjectId          uuid.UUID     `lit:"project_id"`
+	Endpoint           string        `lit:"endpoint"`
+	Duration           int64         `lit:"duration"`
+	RecordedAt         SQLiteTime    `lit:"recorded_at"`
+	StatusCode         int16         `lit:"status_code"`
+	BodySize           int32         `lit:"body_size"`
+	ClientIP           string        `lit:"client_ip"`
+	Attributes         SQLiteJSONMap `lit:"attributes"`
+	AppVersion         string        `lit:"app_version"`
+	ServerName         string        `lit:"server_name"`
+	DistributedTraceId *uuid.UUID    `lit:"distributed_trace_id"`
+}
+
+type groupedEndpointRow struct {
+	Endpoint         string  `lit:"endpoint"`
+	TotalCount       uint64  `lit:"total_count"`
+	AvgDuration      float64 `lit:"avg_duration"`
+	LastSeen         string  `lit:"last_seen"`
+	OffsetMs         uint32  `lit:"offset_ms"`
+	ServerErrorCount uint64  `lit:"server_error_count"`
+	ClientErrorCount uint64  `lit:"client_error_count"`
+	SatisfiedCount   uint64  `lit:"satisfied_count"`
+	ToleratingCount  uint64  `lit:"tolerating_count"`
+	BadCount         uint64  `lit:"bad_count"`
+}
+
+type endpointDurationRow struct {
+	Duration float64 `lit:"duration"`
+}
+
+type slowEndpointRow struct {
+	OffsetMs uint32 `lit:"offset_ms"`
+	Reason   string `lit:"reason"`
+}
+
+type endpointMetricRow struct {
+	Endpoint    string  `lit:"endpoint"`
+	MetricValue float64 `lit:"metric_value"`
+}
+
+type distinctEndpointRow struct {
+	Endpoint string `lit:"endpoint"`
+}
+
+type endpointDetailStatsRow struct {
+	Count               int64   `lit:"count"`
+	AvgDurationMs       float64 `lit:"avg_duration_ms"`
+	ErrorRate           float64 `lit:"error_rate"`
+	SatisfiedTolerating float64 `lit:"satisfied_tolerating"`
+}
+
+func init() {
+	models.ExtensionModelRegistrations = append(models.ExtensionModelRegistrations, func(driver lit.Driver) {
+		lit.RegisterModel[endpoint](driver)
+		lit.RegisterModel[groupedEndpointRow](driver)
+		lit.RegisterModel[endpointDurationRow](driver)
+		lit.RegisterModel[slowEndpointRow](driver)
+		lit.RegisterModel[endpointMetricRow](driver)
+		lit.RegisterModel[distinctEndpointRow](driver)
+		lit.RegisterModel[endpointDetailStatsRow](driver)
+	})
+}
+
+func endpointToRow(e models.Endpoint) endpoint {
+	return endpoint{
+		Id:                 e.Id,
+		ProjectId:          e.ProjectId,
+		Endpoint:           e.Endpoint,
+		Duration:           int64(e.Duration),
+		RecordedAt:         NewSQLiteTime(e.RecordedAt),
+		StatusCode:         e.StatusCode,
+		BodySize:           e.BodySize,
+		ClientIP:           e.ClientIP,
+		Attributes:         NewSQLiteJSONMap(e.Attributes),
+		AppVersion:         e.AppVersion,
+		ServerName:         e.ServerName,
+		DistributedTraceId: e.DistributedTraceId,
+	}
+}
+
+func (r *endpoint) toModel() models.Endpoint {
+	e := models.Endpoint{
+		Id:                 r.Id,
+		ProjectId:          r.ProjectId,
+		Endpoint:           r.Endpoint,
+		Duration:           time.Duration(r.Duration),
+		RecordedAt:         r.RecordedAt.Time,
+		StatusCode:         r.StatusCode,
+		BodySize:           r.BodySize,
+		ClientIP:           r.ClientIP,
+		AppVersion:         r.AppVersion,
+		ServerName:         r.ServerName,
+		DistributedTraceId: r.DistributedTraceId,
+	}
+	if r.Attributes != nil {
+		e.Attributes = map[string]string(r.Attributes)
+	}
+	return e
+}
 
 type endpointRepository struct{}
 
@@ -25,110 +125,84 @@ func (e *endpointRepository) InsertAsync(ctx context.Context, lines []models.End
 		return nil
 	}
 
-	tx, err := db.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO endpoints (id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for _, t := range lines {
-		attributesJSON := "{}"
-		if len(t.Attributes) != 0 {
-			if b, err := json.Marshal(t.Attributes); err == nil {
-				attributesJSON = string(b)
-			}
-		}
-		var distributedTraceIdStr *string
-		if t.DistributedTraceId != nil {
-			s := t.DistributedTraceId.String()
-			distributedTraceIdStr = &s
-		}
-		if _, err := stmt.ExecContext(ctx,
-			t.Id.String(), t.ProjectId.String(), t.Endpoint,
-			int64(t.Duration), t.RecordedAt.UTC().Format(time.RFC3339Nano),
-			t.StatusCode, t.BodySize, t.ClientIP, attributesJSON,
-			t.AppVersion, t.ServerName, distributedTraceIdStr,
-		); err != nil {
+	for _, ep := range lines {
+		row := endpointToRow(ep)
+		if err := lit.InsertExistingUuid(db.TelemetryDB, &row); err != nil {
 			return err
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 func (e *endpointRepository) CountBetween(ctx context.Context, projectId uuid.UUID, start, end time.Time) (int64, error) {
-	var count int64
-	err := db.DB.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM endpoints WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?",
-		projectId.String(), start.UTC().Format(time.RFC3339Nano), end.UTC().Format(time.RFC3339Nano)).Scan(&count)
-	return count, err
+	result, err := lit.SelectSingleNamed[models.CountResult](db.TelemetryDB,
+		"SELECT COUNT(*) AS count FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to",
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return 0, err
+	}
+	if result == nil {
+		return 0, nil
+	}
+	return int64(result.Count), nil
 }
 
 func (e *endpointRepository) FindAll(ctx context.Context, projectId uuid.UUID, fromDate, toDate time.Time, page, pageSize int, orderBy string) ([]models.Endpoint, int64, error) {
-	var count int64
-	err := db.DB.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM endpoints WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?",
-		projectId.String(), fromDate.UTC().Format(time.RFC3339Nano), toDate.UTC().Format(time.RFC3339Nano)).Scan(&count)
+	params := lit.P{"project_id": projectId, "from": NewSQLiteTime(fromDate), "to": NewSQLiteTime(toDate)}
+
+	countResult, err := lit.SelectSingleNamed[models.CountResult](db.TelemetryDB,
+		"SELECT COUNT(*) AS count FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to",
+		params)
 	if err != nil {
 		return nil, 0, err
+	}
+	count := int64(0)
+	if countResult != nil {
+		count = int64(countResult.Count)
 	}
 
 	offset := (page - 1) * pageSize
 
-	allowedOrderBy := map[string]bool{
-		"recorded_at": true,
-		"duration":    true,
-		"status_code": true,
-		"body_size":   true,
-	}
+	allowedOrderBy := map[string]bool{"recorded_at": true, "duration": true, "status_code": true, "body_size": true}
 	if !allowedOrderBy[orderBy] {
 		orderBy = "recorded_at"
 	}
 
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
-		FROM endpoints
-		WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-		ORDER BY ` + orderBy + ` DESC LIMIT ? OFFSET ?`
-
-	rows, err := db.DB.QueryContext(ctx, query,
-		projectId.String(), fromDate.UTC().Format(time.RFC3339Nano), toDate.UTC().Format(time.RFC3339Nano),
-		pageSize, offset)
+	rows, err := lit.SelectNamed[endpoint](db.TelemetryDB,
+		fmt.Sprintf(`SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		ORDER BY %s DESC LIMIT :limit OFFSET :offset`, orderBy),
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(fromDate), "to": NewSQLiteTime(toDate), "limit": pageSize, "offset": offset})
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
 
-	endpoints, err := scanEndpoints(rows)
-	if err != nil {
-		return nil, 0, err
+	endpoints := make([]models.Endpoint, 0, len(rows))
+	for _, row := range rows {
+		endpoints = append(endpoints, row.toModel())
 	}
 
 	return endpoints, count, nil
 }
 
 func (e *endpointRepository) FindGroupedByEndpoint(ctx context.Context, projectId uuid.UUID, fromDate, toDate time.Time, page, pageSize int, orderBy string, sortDirection string, search string) ([]models.EndpointStats, int64, error) {
-	fromStr := fromDate.UTC().Format(time.RFC3339Nano)
-	toStr := toDate.UTC().Format(time.RFC3339Nano)
-	pidStr := projectId.String()
+	params := lit.P{"project_id": projectId, "from": NewSQLiteTime(fromDate), "to": NewSQLiteTime(toDate)}
 
-	whereClause := "e.project_id = ? AND e.recorded_at >= ? AND e.recorded_at <= ?"
-	args := []interface{}{pidStr, fromStr, toStr}
+	whereClause := "e.project_id = :project_id AND e.recorded_at >= :from AND e.recorded_at <= :to"
 	if search != "" {
-		whereClause += " AND INSTR(LOWER(e.endpoint), LOWER(?)) > 0"
-		args = append(args, search)
+		whereClause += " AND INSTR(LOWER(e.endpoint), LOWER(:search)) > 0"
+		params["search"] = search
 	}
 
-	var totalEndpoints int64
-	countQuery := "SELECT COUNT(DISTINCT e.endpoint) FROM endpoints e WHERE " + whereClause
-	if err := db.DB.QueryRowContext(ctx, countQuery, args...).Scan(&totalEndpoints); err != nil {
+	countQuery := "SELECT COUNT(DISTINCT e.endpoint) AS count FROM endpoints e WHERE " + whereClause
+	totalResult, err := lit.SelectSingleNamed[models.CountResult](db.TelemetryDB, countQuery, params)
+	if err != nil {
 		return nil, 0, err
+	}
+	totalEndpoints := int64(0)
+	if totalResult != nil {
+		totalEndpoints = int64(totalResult.Count)
 	}
 
 	groupQuery := `SELECT
@@ -147,31 +221,23 @@ func (e *endpointRepository) FindGroupedByEndpoint(ctx context.Context, projectI
 	WHERE ` + whereClause + `
 	GROUP BY e.endpoint`
 
-	rows, err := db.DB.QueryContext(ctx, groupQuery, args...)
+	parsedQuery, args, err := lit.ParseNamedQuery(db.Driver, groupQuery, params)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
 
-	type groupRow struct {
-		endpoint         string
-		totalCount       uint64
-		avgDuration      float64
-		lastSeen         string
-		offsetMs         uint32
-		serverErrorCount uint64
-		clientErrorCount uint64
-		satisfiedCount   uint64
-		toleratingCount  uint64
-		badCount         uint64
+	sqlRows, err := db.TelemetryDB.QueryContext(ctx, parsedQuery, args...)
+	if err != nil {
+		return nil, 0, err
 	}
+	defer sqlRows.Close()
 
-	var groups []groupRow
-	for rows.Next() {
-		var g groupRow
-		if err := rows.Scan(&g.endpoint, &g.totalCount, &g.avgDuration, &g.lastSeen,
-			&g.offsetMs, &g.serverErrorCount, &g.clientErrorCount,
-			&g.satisfiedCount, &g.toleratingCount, &g.badCount); err != nil {
+	var groups []groupedEndpointRow
+	for sqlRows.Next() {
+		var g groupedEndpointRow
+		if err := sqlRows.Scan(&g.Endpoint, &g.TotalCount, &g.AvgDuration, &g.LastSeen,
+			&g.OffsetMs, &g.ServerErrorCount, &g.ClientErrorCount,
+			&g.SatisfiedCount, &g.ToleratingCount, &g.BadCount); err != nil {
 			return nil, 0, err
 		}
 		groups = append(groups, g)
@@ -179,7 +245,7 @@ func (e *endpointRepository) FindGroupedByEndpoint(ctx context.Context, projectI
 
 	var stats []models.EndpointStats
 	for _, g := range groups {
-		durations, err := fetchSortedDurations(ctx, pidStr, g.endpoint, fromStr, toStr)
+		durations, err := fetchSortedDurations(ctx, projectId, g.Endpoint, fromDate, toDate)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -188,23 +254,22 @@ func (e *endpointRepository) FindGroupedByEndpoint(ctx context.Context, projectI
 		p95 := computePercentile(durations, 0.95)
 		p99 := computePercentile(durations, 0.99)
 
-		impact := computeImpactScore(g.endpoint, g.totalCount, g.satisfiedCount, g.toleratingCount, g.badCount, g.clientErrorCount, p99, g.offsetMs)
+		impact := computeImpactScore(g.Endpoint, g.TotalCount, g.SatisfiedCount, g.ToleratingCount, g.BadCount, g.ClientErrorCount, p99, g.OffsetMs)
 
-		lastSeen, _ := time.Parse(time.RFC3339Nano, g.lastSeen)
+		lastSeen, _ := time.Parse(time.RFC3339Nano, g.LastSeen)
 
-		s := models.EndpointStats{
-			Endpoint:    g.endpoint,
-			Count:       g.totalCount,
+		stats = append(stats, models.EndpointStats{
+			Endpoint:    g.Endpoint,
+			Count:       g.TotalCount,
 			P50Duration: time.Duration(p50),
 			P95Duration: time.Duration(p95),
 			P99Duration: time.Duration(p99),
-			AvgDuration: time.Duration(g.avgDuration),
+			AvgDuration: time.Duration(g.AvgDuration),
 			LastSeen:    lastSeen,
 			Impact:      impact,
-			ImpactReason: ComputeImpactReason(g.endpoint, g.totalCount, g.satisfiedCount, g.toleratingCount,
-				g.badCount, g.clientErrorCount, p99, g.offsetMs),
-		}
-		stats = append(stats, s)
+			ImpactReason: ComputeImpactReason(g.Endpoint, g.TotalCount, g.SatisfiedCount, g.ToleratingCount,
+				g.BadCount, g.ClientErrorCount, p99, g.OffsetMs),
+		})
 	}
 
 	sortEndpointStats(stats, orderBy, sortDirection)
@@ -217,32 +282,27 @@ func (e *endpointRepository) FindGroupedByEndpoint(ctx context.Context, projectI
 	if endIdx > len(stats) {
 		endIdx = len(stats)
 	}
-	page_stats := stats[start:endIdx]
 
-	return page_stats, totalEndpoints, nil
+	return stats[start:endIdx], totalEndpoints, nil
 }
 
-func (e *endpointRepository) FindByEndpoint(ctx context.Context, projectId uuid.UUID, endpoint string, fromDate, toDate time.Time, page, pageSize int, orderBy string, sortDirection string) ([]models.Endpoint, int64, error) {
-	pidStr := projectId.String()
-	fromStr := fromDate.UTC().Format(time.RFC3339Nano)
-	toStr := toDate.UTC().Format(time.RFC3339Nano)
+func (e *endpointRepository) FindByEndpoint(ctx context.Context, projectId uuid.UUID, endpointName string, fromDate, toDate time.Time, page, pageSize int, orderBy string, sortDirection string) ([]models.Endpoint, int64, error) {
+	params := lit.P{"project_id": projectId, "endpoint": endpointName, "from": NewSQLiteTime(fromDate), "to": NewSQLiteTime(toDate)}
 
-	var count int64
-	err := db.DB.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM endpoints WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ?",
-		pidStr, endpoint, fromStr, toStr).Scan(&count)
+	countResult, err := lit.SelectSingleNamed[models.CountResult](db.TelemetryDB,
+		"SELECT COUNT(*) AS count FROM endpoints WHERE project_id = :project_id AND endpoint = :endpoint AND recorded_at >= :from AND recorded_at <= :to",
+		params)
 	if err != nil {
 		return nil, 0, err
+	}
+	count := int64(0)
+	if countResult != nil {
+		count = int64(countResult.Count)
 	}
 
 	offset := (page - 1) * pageSize
 
-	allowedOrderBy := map[string]bool{
-		"recorded_at": true,
-		"duration":    true,
-		"status_code": true,
-		"body_size":   true,
-	}
+	allowedOrderBy := map[string]bool{"recorded_at": true, "duration": true, "status_code": true, "body_size": true}
 	if !allowedOrderBy[orderBy] {
 		orderBy = "recorded_at"
 	}
@@ -252,141 +312,117 @@ func (e *endpointRepository) FindByEndpoint(ctx context.Context, projectId uuid.
 		sortDir = "ASC"
 	}
 
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
-		FROM endpoints
-		WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ?
-		ORDER BY ` + orderBy + ` ` + sortDir + ` LIMIT ? OFFSET ?`
-
-	rows, err := db.DB.QueryContext(ctx, query, pidStr, endpoint, fromStr, toStr, pageSize, offset)
+	rows, err := lit.SelectNamed[endpoint](db.TelemetryDB,
+		fmt.Sprintf(`SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
+		FROM endpoints WHERE project_id = :project_id AND endpoint = :endpoint AND recorded_at >= :from AND recorded_at <= :to
+		ORDER BY %s %s LIMIT :limit OFFSET :offset`, orderBy, sortDir),
+		lit.P{"project_id": projectId, "endpoint": endpointName, "from": NewSQLiteTime(fromDate), "to": NewSQLiteTime(toDate), "limit": pageSize, "offset": offset})
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
 
-	endpoints, err := scanEndpoints(rows)
-	if err != nil {
-		return nil, 0, err
+	endpoints := make([]models.Endpoint, 0, len(rows))
+	for _, row := range rows {
+		endpoints = append(endpoints, row.toModel())
 	}
 
 	return endpoints, count, nil
 }
 
 func (e *endpointRepository) FindById(ctx context.Context, projectId, endpointId uuid.UUID) (*models.Endpoint, error) {
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
-		FROM endpoints
-		WHERE project_id = ? AND id = ?
-		LIMIT 1`
-
-	var t models.Endpoint
-	var idStr, projectIdStr, recordedAtStr, attributesJSON string
-	var distributedTraceIdStr sql.NullString
-	err := db.DB.QueryRowContext(ctx, query, projectId.String(), endpointId.String()).Scan(
-		&idStr, &projectIdStr, &t.Endpoint, &t.Duration, &recordedAtStr,
-		&t.StatusCode, &t.BodySize, &t.ClientIP, &attributesJSON, &t.AppVersion, &t.ServerName, &distributedTraceIdStr)
+	row, err := lit.SelectSingleNamed[endpoint](db.TelemetryDB,
+		`SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
+		FROM endpoints WHERE project_id = :project_id AND id = :id LIMIT 1`,
+		lit.P{"project_id": projectId, "id": endpointId})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, err
 	}
-
-	t.Id, _ = uuid.Parse(idStr)
-	t.ProjectId, _ = uuid.Parse(projectIdStr)
-	t.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
-	if distributedTraceIdStr.Valid && distributedTraceIdStr.String != "" {
-		parsed, err := uuid.Parse(distributedTraceIdStr.String)
-		if err == nil {
-			t.DistributedTraceId = &parsed
-		}
+	if row == nil {
+		return nil, nil
 	}
-	if attributesJSON != "" && attributesJSON != "{}" {
-		if err := json.Unmarshal([]byte(attributesJSON), &t.Attributes); err != nil {
-			t.Attributes = nil
-		}
-	}
-
-	return &t, nil
+	ep := row.toModel()
+	return &ep, nil
 }
 
 func (e *endpointRepository) CountByHour(ctx context.Context, projectId uuid.UUID, start, end time.Time) ([]models.TimeSeriesPoint, error) {
-	query := `SELECT
-		strftime('%Y-%m-%d %H:00:00', recorded_at) as hour,
-		CAST(COUNT(*) AS REAL) as count
-	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-	GROUP BY hour
-	ORDER BY hour ASC`
-
-	return queryTimeSeries(ctx, query, projectId.String(), start, end)
+	results, err := lit.SelectNamed[timeSeriesResult](db.TelemetryDB,
+		`SELECT strftime('%Y-%m-%d %H:00:00', recorded_at) as bucket, CAST(COUNT(*) AS REAL) as agg_value
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		GROUP BY bucket ORDER BY bucket ASC`,
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return nil, err
+	}
+	return timeSeriesResultsToPoints(results), nil
 }
 
 func (e *endpointRepository) AvgDurationByHour(ctx context.Context, projectId uuid.UUID, start, end time.Time) ([]models.TimeSeriesPoint, error) {
-	query := `SELECT
-		strftime('%Y-%m-%d %H:00:00', recorded_at) as hour,
-		AVG(duration) / 1000000.0 as avg_duration_ms
-	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-	GROUP BY hour
-	ORDER BY hour ASC`
-
-	return queryTimeSeries(ctx, query, projectId.String(), start, end)
+	results, err := lit.SelectNamed[timeSeriesResult](db.TelemetryDB,
+		`SELECT strftime('%Y-%m-%d %H:00:00', recorded_at) as bucket, AVG(duration) / 1000000.0 as agg_value
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		GROUP BY bucket ORDER BY bucket ASC`,
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return nil, err
+	}
+	return timeSeriesResultsToPoints(results), nil
 }
 
 func (e *endpointRepository) ErrorRateByHour(ctx context.Context, projectId uuid.UUID, start, end time.Time) ([]models.TimeSeriesPoint, error) {
-	query := `SELECT
-		strftime('%Y-%m-%d %H:00:00', recorded_at) as hour,
-		SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as error_rate
-	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-	GROUP BY hour
-	ORDER BY hour ASC`
-
-	return queryTimeSeries(ctx, query, projectId.String(), start, end)
+	results, err := lit.SelectNamed[timeSeriesResult](db.TelemetryDB,
+		`SELECT strftime('%Y-%m-%d %H:00:00', recorded_at) as bucket,
+		SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as agg_value
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		GROUP BY bucket ORDER BY bucket ASC`,
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return nil, err
+	}
+	return timeSeriesResultsToPoints(results), nil
 }
 
 func (e *endpointRepository) CountByInterval(ctx context.Context, projectId uuid.UUID, start, end time.Time, intervalMinutes int) ([]models.TimeSeriesPoint, error) {
 	secs := intervalMinutes * 60
-	query := fmt.Sprintf(`SELECT
-		datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket,
-		CAST(COUNT(*) AS REAL) as count
-	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-	GROUP BY bucket
-	ORDER BY bucket ASC`, secs, secs)
-
-	return queryTimeSeries(ctx, query, projectId.String(), start, end)
+	results, err := lit.SelectNamed[timeSeriesResult](db.TelemetryDB,
+		fmt.Sprintf(`SELECT datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket, CAST(COUNT(*) AS REAL) as agg_value
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		GROUP BY bucket ORDER BY bucket ASC`, secs, secs),
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return nil, err
+	}
+	return timeSeriesResultsToPoints(results), nil
 }
 
 func (e *endpointRepository) AvgDurationByInterval(ctx context.Context, projectId uuid.UUID, start, end time.Time, intervalMinutes int) ([]models.TimeSeriesPoint, error) {
 	secs := intervalMinutes * 60
-	query := fmt.Sprintf(`SELECT
-		datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket,
-		AVG(duration) / 1000000.0 as avg_duration_ms
-	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-	GROUP BY bucket
-	ORDER BY bucket ASC`, secs, secs)
-
-	return queryTimeSeries(ctx, query, projectId.String(), start, end)
+	results, err := lit.SelectNamed[timeSeriesResult](db.TelemetryDB,
+		fmt.Sprintf(`SELECT datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket, AVG(duration) / 1000000.0 as agg_value
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		GROUP BY bucket ORDER BY bucket ASC`, secs, secs),
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return nil, err
+	}
+	return timeSeriesResultsToPoints(results), nil
 }
 
 func (e *endpointRepository) ErrorRateByInterval(ctx context.Context, projectId uuid.UUID, start, end time.Time, intervalMinutes int) ([]models.TimeSeriesPoint, error) {
 	secs := intervalMinutes * 60
-	query := fmt.Sprintf(`SELECT
-		datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket,
-		SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as error_rate
-	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-	GROUP BY bucket
-	ORDER BY bucket ASC`, secs, secs)
-
-	return queryTimeSeries(ctx, query, projectId.String(), start, end)
+	results, err := lit.SelectNamed[timeSeriesResult](db.TelemetryDB,
+		fmt.Sprintf(`SELECT datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket,
+		SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as agg_value
+		FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+		GROUP BY bucket ORDER BY bucket ASC`, secs, secs),
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
+	if err != nil {
+		return nil, err
+	}
+	return timeSeriesResultsToPoints(results), nil
 }
 
 func (e *endpointRepository) FindWorstEndpoints(ctx context.Context, projectId uuid.UUID, start, end time.Time, limit int) ([]models.EndpointStats, error) {
-	fromStr := start.UTC().Format(time.RFC3339Nano)
-	toStr := end.UTC().Format(time.RFC3339Nano)
-	pidStr := projectId.String()
+	params := lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)}
 
 	groupQuery := `SELECT
 		e.endpoint,
@@ -401,34 +437,26 @@ func (e *endpointRepository) FindWorstEndpoints(ctx context.Context, projectId u
 		SUM(CASE WHEN e.duration > (1500000000 + COALESCE(s.offset_ms, 0) * 1000000) OR e.status_code >= 500 THEN 1 ELSE 0 END) as bad_count
 	FROM endpoints e
 	LEFT JOIN slow_endpoints s ON e.endpoint = s.endpoint AND e.project_id = s.project_id
-	WHERE e.project_id = ? AND e.recorded_at >= ? AND e.recorded_at <= ?
+	WHERE e.project_id = :project_id AND e.recorded_at >= :from AND e.recorded_at <= :to
 	GROUP BY e.endpoint`
 
-	rows, err := db.DB.QueryContext(ctx, groupQuery, pidStr, fromStr, toStr)
+	parsedQuery, args, err := lit.ParseNamedQuery(db.Driver, groupQuery, params)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	type groupRow struct {
-		endpoint         string
-		totalCount       uint64
-		avgDuration      float64
-		lastSeen         string
-		offsetMs         uint32
-		serverErrorCount uint64
-		clientErrorCount uint64
-		satisfiedCount   uint64
-		toleratingCount  uint64
-		badCount         uint64
+	sqlRows, err := db.TelemetryDB.QueryContext(ctx, parsedQuery, args...)
+	if err != nil {
+		return nil, err
 	}
+	defer sqlRows.Close()
 
-	var groups []groupRow
-	for rows.Next() {
-		var g groupRow
-		if err := rows.Scan(&g.endpoint, &g.totalCount, &g.avgDuration, &g.lastSeen,
-			&g.offsetMs, &g.serverErrorCount, &g.clientErrorCount,
-			&g.satisfiedCount, &g.toleratingCount, &g.badCount); err != nil {
+	var groups []groupedEndpointRow
+	for sqlRows.Next() {
+		var g groupedEndpointRow
+		if err := sqlRows.Scan(&g.Endpoint, &g.TotalCount, &g.AvgDuration, &g.LastSeen,
+			&g.OffsetMs, &g.ServerErrorCount, &g.ClientErrorCount,
+			&g.SatisfiedCount, &g.ToleratingCount, &g.BadCount); err != nil {
 			return nil, err
 		}
 		groups = append(groups, g)
@@ -436,7 +464,7 @@ func (e *endpointRepository) FindWorstEndpoints(ctx context.Context, projectId u
 
 	var stats []models.EndpointStats
 	for _, g := range groups {
-		durations, err := fetchSortedDurations(ctx, pidStr, g.endpoint, fromStr, toStr)
+		durations, err := fetchSortedDurations(ctx, projectId, g.Endpoint, start, end)
 		if err != nil {
 			return nil, err
 		}
@@ -445,23 +473,22 @@ func (e *endpointRepository) FindWorstEndpoints(ctx context.Context, projectId u
 		p95 := computePercentile(durations, 0.95)
 		p99 := computePercentile(durations, 0.99)
 
-		impact := computeImpactScore(g.endpoint, g.totalCount, g.satisfiedCount, g.toleratingCount, g.badCount, g.clientErrorCount, p99, g.offsetMs)
+		impact := computeImpactScore(g.Endpoint, g.TotalCount, g.SatisfiedCount, g.ToleratingCount, g.BadCount, g.ClientErrorCount, p99, g.OffsetMs)
 
-		lastSeen, _ := time.Parse(time.RFC3339Nano, g.lastSeen)
+		lastSeen, _ := time.Parse(time.RFC3339Nano, g.LastSeen)
 
-		s := models.EndpointStats{
-			Endpoint:    g.endpoint,
-			Count:       g.totalCount,
+		stats = append(stats, models.EndpointStats{
+			Endpoint:    g.Endpoint,
+			Count:       g.TotalCount,
 			P50Duration: time.Duration(p50),
 			P95Duration: time.Duration(p95),
 			P99Duration: time.Duration(p99),
-			AvgDuration: time.Duration(g.avgDuration),
+			AvgDuration: time.Duration(g.AvgDuration),
 			LastSeen:    lastSeen,
 			Impact:      impact,
-			ImpactReason: ComputeImpactReason(g.endpoint, g.totalCount, g.satisfiedCount, g.toleratingCount,
-				g.badCount, g.clientErrorCount, p99, g.offsetMs),
-		}
-		stats = append(stats, s)
+			ImpactReason: ComputeImpactReason(g.Endpoint, g.TotalCount, g.SatisfiedCount, g.ToleratingCount,
+				g.BadCount, g.ClientErrorCount, p99, g.OffsetMs),
+		})
 	}
 
 	sort.Slice(stats, func(i, j int) bool {
@@ -476,41 +503,39 @@ func (e *endpointRepository) FindWorstEndpoints(ctx context.Context, projectId u
 }
 
 func (e *endpointRepository) GetEndpointStats(ctx context.Context, projectId uuid.UUID, endpoint string, start, end time.Time) (*models.EndpointDetailStats, error) {
-	pidStr := projectId.String()
-	fromStr := start.UTC().Format(time.RFC3339Nano)
-	toStr := end.UTC().Format(time.RFC3339Nano)
+	params := lit.P{"project_id": projectId, "endpoint": endpoint, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)}
 
 	durationMinutes := end.Sub(start).Minutes()
 	if durationMinutes < 1 {
 		durationMinutes = 1
 	}
 
-	query := `SELECT
-		COUNT(*) as count,
-		CASE WHEN COUNT(*) > 0 THEN AVG(duration) / 1000000.0 ELSE 0 END as avg_duration_ms,
-		CASE WHEN COUNT(*) > 0 THEN SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) ELSE 0 END as error_rate,
-		SUM(CASE WHEN duration <= 500000000 AND status_code < 500 THEN 1 ELSE 0 END) +
-			SUM(CASE WHEN duration > 500000000 AND duration <= 2000000000 AND status_code < 500 THEN 1 ELSE 0 END) * 0.5 as satisfied_tolerating
-	FROM endpoints
-	WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ?`
-
-	var stats models.EndpointDetailStats
-	var count int64
-	var satisfiedTolerating float64
-
-	err := db.DB.QueryRowContext(ctx, query, pidStr, endpoint, fromStr, toStr).Scan(
-		&count, &stats.AvgDuration, &stats.ErrorRate, &satisfiedTolerating)
+	row, err := lit.SelectSingleNamed[endpointDetailStatsRow](db.TelemetryDB,
+		`SELECT
+			COUNT(*) as count,
+			CASE WHEN COUNT(*) > 0 THEN AVG(duration) / 1000000.0 ELSE 0 END as avg_duration_ms,
+			CASE WHEN COUNT(*) > 0 THEN SUM(CASE WHEN status_code >= 500 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) ELSE 0 END as error_rate,
+			SUM(CASE WHEN duration <= 500000000 AND status_code < 500 THEN 1 ELSE 0 END) +
+				SUM(CASE WHEN duration > 500000000 AND duration <= 2000000000 AND status_code < 500 THEN 1 ELSE 0 END) * 0.5 as satisfied_tolerating
+		FROM endpoints WHERE project_id = :project_id AND endpoint = :endpoint AND recorded_at >= :from AND recorded_at <= :to`,
+		params)
 	if err != nil {
 		return nil, err
 	}
-
-	stats.Count = count
-	if count > 0 {
-		stats.Apdex = satisfiedTolerating / float64(count)
+	if row == nil {
+		return &models.EndpointDetailStats{}, nil
 	}
-	stats.Throughput = float64(count) / durationMinutes
 
-	durations, err := fetchSortedDurations(ctx, pidStr, endpoint, fromStr, toStr)
+	var stats models.EndpointDetailStats
+	stats.Count = row.Count
+	stats.AvgDuration = row.AvgDurationMs
+	stats.ErrorRate = row.ErrorRate
+	if row.Count > 0 {
+		stats.Apdex = row.SatisfiedTolerating / float64(row.Count)
+	}
+	stats.Throughput = float64(row.Count) / durationMinutes
+
+	durations, err := fetchSortedDurations(ctx, projectId, endpoint, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -525,12 +550,9 @@ func (e *endpointRepository) GetEndpointStats(ctx context.Context, projectId uui
 }
 
 func (e *endpointRepository) GetEndpointStackedChart(ctx context.Context, projectId uuid.UUID, start, end time.Time, intervalMinutes int, metricType string) (*models.EndpointStackedChartResponse, error) {
-	pidStr := projectId.String()
-	fromStr := start.UTC().Format(time.RFC3339Nano)
-	toStr := end.UTC().Format(time.RFC3339Nano)
+	params := lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)}
 
-	// Step 1: Get top 5 endpoints by metric
-	topEndpoints, err := getTopEndpointsByMetric(ctx, pidStr, fromStr, toStr, metricType)
+	topEndpoints, err := getTopEndpointsByMetric(ctx, projectId, start, end, metricType)
 	if err != nil {
 		return nil, err
 	}
@@ -542,12 +564,17 @@ func (e *endpointRepository) GetEndpointStackedChart(ctx context.Context, projec
 		}, nil
 	}
 
-	// Step 2: Build CASE expression for categorization
+	secs := intervalMinutes * 60
+
+	if metricType == "p50" || metricType == "p95" || metricType == "p99" || metricType == "" {
+		return e.getStackedChartWithPercentiles(ctx, projectId, start, end, secs, topEndpoints, metricType)
+	}
+
 	caseExpr := "CASE "
-	caseArgs := make([]interface{}, 0, len(topEndpoints))
-	for _, ep := range topEndpoints {
-		caseExpr += "WHEN endpoint = ? THEN ? "
-		caseArgs = append(caseArgs, ep, ep)
+	for i, ep := range topEndpoints {
+		key := fmt.Sprintf("ep_%d", i)
+		caseExpr += fmt.Sprintf("WHEN endpoint = :%s THEN :%s ", key, key)
+		params[key] = ep
 	}
 	caseExpr += "ELSE 'Other' END"
 
@@ -555,44 +582,35 @@ func (e *endpointRepository) GetEndpointStackedChart(ctx context.Context, projec
 	switch metricType {
 	case "total_time":
 		metricExpr = "COUNT(*) * AVG(duration) / 1000000.0"
-	case "p95":
-		metricExpr = "AVG(duration) / 1000000.0"
-	case "p99":
-		metricExpr = "AVG(duration) / 1000000.0"
 	default:
 		metricExpr = "AVG(duration) / 1000000.0"
 	}
 
-	secs := intervalMinutes * 60
 	timeSeriesQuery := fmt.Sprintf(`SELECT
 		datetime((strftime('%%s', recorded_at) / %d) * %d, 'unixepoch') as bucket,
 		%s as endpoint_category,
 		%s as metric_value
 	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
+	WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
 	GROUP BY bucket, endpoint_category
 	ORDER BY bucket ASC, endpoint_category ASC`, secs, secs, caseExpr, metricExpr)
 
-	args := make([]interface{}, 0, len(caseArgs)+3)
-	args = append(args, caseArgs...)
-	args = append(args, pidStr, fromStr, toStr)
-
-	// For p50/p95/p99 we need per-bucket per-category percentile computation
-	if metricType == "p50" || metricType == "p95" || metricType == "p99" || metricType == "" {
-		return e.getStackedChartWithPercentiles(ctx, pidStr, fromStr, toStr, secs, topEndpoints, metricType)
-	}
-
-	rows, err := db.DB.QueryContext(ctx, timeSeriesQuery, args...)
+	parsedQuery, args, err := lit.ParseNamedQuery(db.Driver, timeSeriesQuery, params)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
+	sqlRows, err := db.TelemetryDB.QueryContext(ctx, parsedQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer sqlRows.Close()
 
 	var series []models.EndpointTimeSeriesPoint
-	for rows.Next() {
+	for sqlRows.Next() {
 		var p models.EndpointTimeSeriesPoint
 		var tsStr string
-		if err := rows.Scan(&tsStr, &p.Endpoint, &p.Value); err != nil {
+		if err := sqlRows.Scan(&tsStr, &p.Endpoint, &p.Value); err != nil {
 			return nil, err
 		}
 		p.Timestamp, _ = time.Parse("2006-01-02 15:04:05", tsStr)
@@ -616,7 +634,7 @@ func (e *endpointRepository) GetEndpointStackedChart(ctx context.Context, projec
 	}, nil
 }
 
-func (e *endpointRepository) getStackedChartWithPercentiles(ctx context.Context, pidStr, fromStr, toStr string, bucketSecs int, topEndpoints []string, metricType string) (*models.EndpointStackedChartResponse, error) {
+func (e *endpointRepository) getStackedChartWithPercentiles(ctx context.Context, projectId uuid.UUID, start, end time.Time, bucketSecs int, topEndpoints []string, metricType string) (*models.EndpointStackedChartResponse, error) {
 	percentile := 0.5
 	switch metricType {
 	case "p95":
@@ -635,14 +653,20 @@ func (e *endpointRepository) getStackedChartWithPercentiles(ctx context.Context,
 		endpoint,
 		duration
 	FROM endpoints
-	WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
+	WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
 	ORDER BY bucket ASC, endpoint ASC, duration ASC`, bucketSecs, bucketSecs)
 
-	rows, err := db.DB.QueryContext(ctx, query, pidStr, fromStr, toStr)
+	parsedQuery, args, err := lit.ParseNamedQuery(db.Driver, query,
+		lit.P{"project_id": projectId, "from": NewSQLiteTime(start), "to": NewSQLiteTime(end)})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
+	sqlRows, err := db.TelemetryDB.QueryContext(ctx, parsedQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer sqlRows.Close()
 
 	type bucketKey struct {
 		bucket   string
@@ -650,16 +674,16 @@ func (e *endpointRepository) getStackedChartWithPercentiles(ctx context.Context,
 	}
 	durationMap := make(map[bucketKey][]float64)
 
-	for rows.Next() {
-		var bucketStr, endpoint string
+	for sqlRows.Next() {
+		var bucketStr, epName string
 		var duration float64
-		if err := rows.Scan(&bucketStr, &endpoint, &duration); err != nil {
+		if err := sqlRows.Scan(&bucketStr, &epName, &duration); err != nil {
 			return nil, err
 		}
 
 		category := "Other"
-		if topSet[endpoint] {
-			category = endpoint
+		if topSet[epName] {
+			category = epName
 		}
 
 		key := bucketKey{bucket: bucketStr, category: category}
@@ -704,68 +728,41 @@ func (e *endpointRepository) getStackedChartWithPercentiles(ctx context.Context,
 }
 
 func (e *endpointRepository) GetSlowEndpoint(ctx context.Context, projectId uuid.UUID, endpoint string) (uint32, string, error) {
-	var offsetMs uint32
-	var reason string
-	err := db.DB.QueryRowContext(ctx,
-		"SELECT offset_ms, reason FROM slow_endpoints WHERE project_id = ? AND endpoint = ?",
-		projectId.String(), endpoint).Scan(&offsetMs, &reason)
-	return offsetMs, reason, err
+	result, err := lit.SelectSingleNamed[slowEndpointRow](db.TelemetryDB,
+		"SELECT offset_ms, reason FROM slow_endpoints WHERE project_id = :project_id AND endpoint = :endpoint",
+		lit.P{"project_id": projectId, "endpoint": endpoint})
+	if err != nil {
+		return 0, "", err
+	}
+	if result == nil {
+		return 0, "", fmt.Errorf("not found")
+	}
+	return result.OffsetMs, result.Reason, nil
 }
 
 func (e *endpointRepository) UpsertSlowEndpoint(ctx context.Context, projectId uuid.UUID, endpoint string, offsetMs uint32, reason string) error {
-	_, err := db.DB.ExecContext(ctx,
-		"INSERT OR REPLACE INTO slow_endpoints (project_id, endpoint, offset_ms, reason) VALUES (?, ?, ?, ?)",
-		projectId.String(), endpoint, offsetMs, reason)
+	query, args, err := lit.ParseNamedQuery(db.Driver,
+		"INSERT OR REPLACE INTO slow_endpoints (project_id, endpoint, offset_ms, reason) VALUES (:project_id, :endpoint, :offset_ms, :reason)",
+		lit.P{"project_id": projectId, "endpoint": endpoint, "offset_ms": offsetMs, "reason": reason})
+	if err != nil {
+		return err
+	}
+	_, err = db.TelemetryDB.ExecContext(ctx, query, args...)
 	return err
 }
 
 // --- helpers ---
 
-func scanEndpoints(rows *sql.Rows) ([]models.Endpoint, error) {
-	var endpoints []models.Endpoint
-	for rows.Next() {
-		var t models.Endpoint
-		var idStr, projectIdStr, recordedAtStr, attributesJSON string
-		var distributedTraceIdStr sql.NullString
-		if err := rows.Scan(&idStr, &projectIdStr, &t.Endpoint, &t.Duration, &recordedAtStr,
-			&t.StatusCode, &t.BodySize, &t.ClientIP, &attributesJSON, &t.AppVersion, &t.ServerName, &distributedTraceIdStr); err != nil {
-			return nil, err
-		}
-		t.Id, _ = uuid.Parse(idStr)
-		t.ProjectId, _ = uuid.Parse(projectIdStr)
-		t.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
-		if distributedTraceIdStr.Valid && distributedTraceIdStr.String != "" {
-			parsed, err := uuid.Parse(distributedTraceIdStr.String)
-			if err == nil {
-				t.DistributedTraceId = &parsed
-			}
-		}
-		if attributesJSON != "" && attributesJSON != "{}" {
-			if err := json.Unmarshal([]byte(attributesJSON), &t.Attributes); err != nil {
-				t.Attributes = nil
-			}
-		}
-		endpoints = append(endpoints, t)
-	}
-	return endpoints, nil
-}
-
-func fetchSortedDurations(ctx context.Context, pidStr, endpoint, fromStr, toStr string) ([]float64, error) {
-	rows, err := db.DB.QueryContext(ctx,
-		"SELECT duration FROM endpoints WHERE project_id = ? AND endpoint = ? AND recorded_at >= ? AND recorded_at <= ? ORDER BY duration ASC",
-		pidStr, endpoint, fromStr, toStr)
+func fetchSortedDurations(ctx context.Context, projectId uuid.UUID, endpoint string, from, to time.Time) ([]float64, error) {
+	results, err := lit.SelectNamed[endpointDurationRow](db.TelemetryDB,
+		"SELECT duration FROM endpoints WHERE project_id = :project_id AND endpoint = :endpoint AND recorded_at >= :from AND recorded_at <= :to ORDER BY duration ASC",
+		lit.P{"project_id": projectId, "endpoint": endpoint, "from": NewSQLiteTime(from), "to": NewSQLiteTime(to)})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var durations []float64
-	for rows.Next() {
-		var d float64
-		if err := rows.Scan(&d); err != nil {
-			return nil, err
-		}
-		durations = append(durations, d)
+	durations := make([]float64, 0, len(results))
+	for _, r := range results {
+		durations = append(durations, r.Duration)
 	}
 	return durations, nil
 }
@@ -866,55 +863,26 @@ func sortEndpointStats(stats []models.EndpointStats, orderBy string, sortDirecti
 	})
 }
 
-func queryTimeSeries(ctx context.Context, query, pidStr string, start, end time.Time) ([]models.TimeSeriesPoint, error) {
-	rows, err := db.DB.QueryContext(ctx, query, pidStr, start.UTC().Format(time.RFC3339Nano), end.UTC().Format(time.RFC3339Nano))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func getTopEndpointsByMetric(ctx context.Context, projectId uuid.UUID, from, to time.Time, metricType string) ([]string, error) {
+	params := lit.P{"project_id": projectId, "from": NewSQLiteTime(from), "to": NewSQLiteTime(to)}
 
-	var points []models.TimeSeriesPoint
-	for rows.Next() {
-		var p models.TimeSeriesPoint
-		var tsStr string
-		if err := rows.Scan(&tsStr, &p.Value); err != nil {
-			return nil, err
-		}
-		p.Timestamp, _ = time.Parse("2006-01-02 15:04:05", tsStr)
-		points = append(points, p)
-	}
-
-	return points, nil
-}
-
-func getTopEndpointsByMetric(ctx context.Context, pidStr, fromStr, toStr, metricType string) ([]string, error) {
 	if metricType == "total_time" {
-		query := `SELECT endpoint, COUNT(*) * AVG(duration) / 1000000.0 as metric_value
-			FROM endpoints
-			WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?
-			GROUP BY endpoint
-			ORDER BY metric_value DESC
-			LIMIT 5`
-
-		rows, err := db.DB.QueryContext(ctx, query, pidStr, fromStr, toStr)
+		results, err := lit.SelectNamed[endpointMetricRow](db.TelemetryDB,
+			`SELECT endpoint, COUNT(*) * AVG(duration) / 1000000.0 as metric_value
+			FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to
+			GROUP BY endpoint ORDER BY metric_value DESC LIMIT 5`,
+			params)
 		if err != nil {
 			return nil, err
 		}
-		defer rows.Close()
 
-		var endpoints []string
-		for rows.Next() {
-			var ep string
-			var val float64
-			if err := rows.Scan(&ep, &val); err != nil {
-				return nil, err
-			}
-			endpoints = append(endpoints, ep)
+		endpoints := make([]string, 0, len(results))
+		for _, r := range results {
+			endpoints = append(endpoints, r.Endpoint)
 		}
 		return endpoints, nil
 	}
 
-	// For p50/p95/p99: need to fetch durations per endpoint, compute percentile, sort
 	percentile := 0.5
 	switch metricType {
 	case "p95":
@@ -923,20 +891,11 @@ func getTopEndpointsByMetric(ctx context.Context, pidStr, fromStr, toStr, metric
 		percentile = 0.99
 	}
 
-	epQuery := `SELECT DISTINCT endpoint FROM endpoints WHERE project_id = ? AND recorded_at >= ? AND recorded_at <= ?`
-	rows, err := db.DB.QueryContext(ctx, epQuery, pidStr, fromStr, toStr)
+	epRows, err := lit.SelectNamed[distinctEndpointRow](db.TelemetryDB,
+		`SELECT DISTINCT endpoint FROM endpoints WHERE project_id = :project_id AND recorded_at >= :from AND recorded_at <= :to`,
+		params)
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-
-	var allEndpoints []string
-	for rows.Next() {
-		var ep string
-		if err := rows.Scan(&ep); err != nil {
-			return nil, err
-		}
-		allEndpoints = append(allEndpoints, ep)
 	}
 
 	type epMetric struct {
@@ -945,13 +904,13 @@ func getTopEndpointsByMetric(ctx context.Context, pidStr, fromStr, toStr, metric
 	}
 
 	var metrics []epMetric
-	for _, ep := range allEndpoints {
-		durations, err := fetchSortedDurations(ctx, pidStr, ep, fromStr, toStr)
+	for _, ep := range epRows {
+		durations, err := fetchSortedDurations(ctx, projectId, ep.Endpoint, from, to)
 		if err != nil {
 			return nil, err
 		}
 		val := computePercentile(durations, percentile) / 1000000.0
-		metrics = append(metrics, epMetric{endpoint: ep, value: val})
+		metrics = append(metrics, epMetric{endpoint: ep.Endpoint, value: val})
 	}
 
 	sort.Slice(metrics, func(i, j int) bool {
@@ -975,21 +934,38 @@ func (e *endpointRepository) FindByDistributedTraceId(ctx context.Context, distr
 	if len(projectIds) == 0 {
 		return nil, nil
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(projectIds)), ",")
-	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
-		FROM endpoints
-		WHERE distributed_trace_id = ? AND project_id IN (` + placeholders + `)
-		ORDER BY recorded_at ASC`
-	args := []interface{}{distributedTraceId.String()}
-	for _, pid := range projectIds {
-		args = append(args, pid.String())
+	params := lit.P{"trace_id": distributedTraceId}
+	placeholders := make([]string, len(projectIds))
+	for i, pid := range projectIds {
+		key := fmt.Sprintf("pid_%d", i)
+		placeholders[i] = ":" + key
+		params[key] = pid
 	}
-	rows, err := db.QueryerFromContext(ctx).QueryContext(ctx, query, args...)
+	query := `SELECT id, project_id, endpoint, duration, recorded_at, status_code, body_size, client_ip, attributes, app_version, server_name, distributed_trace_id
+		FROM endpoints WHERE distributed_trace_id = :trace_id AND project_id IN (` + strings.Join(placeholders, ",") + `)
+		ORDER BY recorded_at ASC`
+
+	parsedQuery, args, err := lit.ParseNamedQuery(db.Driver, query, params)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	return scanEndpoints(rows)
+
+	sqlRows, err := db.TelemetryDB.QueryContext(ctx, parsedQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer sqlRows.Close()
+
+	var endpoints []models.Endpoint
+	for sqlRows.Next() {
+		var row endpoint
+		if err := sqlRows.Scan(&row.Id, &row.ProjectId, &row.Endpoint, &row.Duration, &row.RecordedAt,
+			&row.StatusCode, &row.BodySize, &row.ClientIP, &row.Attributes, &row.AppVersion, &row.ServerName, &row.DistributedTraceId); err != nil {
+			return nil, err
+		}
+		endpoints = append(endpoints, row.toModel())
+	}
+	return endpoints, nil
 }
 
 var EndpointRepository = endpointRepository{}

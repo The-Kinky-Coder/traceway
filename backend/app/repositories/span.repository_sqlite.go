@@ -7,9 +7,50 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tracewayapp/lit/v2"
 	"github.com/tracewayapp/traceway/backend/app/db"
 	"github.com/tracewayapp/traceway/backend/app/models"
 )
+
+type span struct {
+	Id         uuid.UUID     `lit:"id"`
+	TraceId    uuid.UUID     `lit:"trace_id"`
+	ProjectId  uuid.UUID     `lit:"project_id"`
+	Name       string        `lit:"name"`
+	StartTime  SQLiteTime    `lit:"start_time"`
+	Duration   int64         `lit:"duration"`
+	RecordedAt SQLiteTime    `lit:"recorded_at"`
+}
+
+func init() {
+	models.ExtensionModelRegistrations = append(models.ExtensionModelRegistrations, func(driver lit.Driver) {
+		lit.RegisterModel[span](driver)
+	})
+}
+
+func spanToRow(s models.Span) span {
+	return span{
+		Id:         s.Id,
+		TraceId:    s.TraceId,
+		ProjectId:  s.ProjectId,
+		Name:       s.Name,
+		StartTime:  NewSQLiteTime(s.StartTime),
+		Duration:   int64(s.Duration),
+		RecordedAt: NewSQLiteTime(s.RecordedAt),
+	}
+}
+
+func (r *span) toModel() models.Span {
+	return models.Span{
+		Id:         r.Id,
+		TraceId:    r.TraceId,
+		ProjectId:  r.ProjectId,
+		Name:       r.Name,
+		StartTime:  r.StartTime.Time,
+		Duration:   time.Duration(r.Duration),
+		RecordedAt: r.RecordedAt.Time,
+	}
+}
 
 type spanRepository struct{}
 
@@ -18,59 +59,31 @@ func (r *spanRepository) InsertAsync(ctx context.Context, spans []models.Span) e
 		return nil
 	}
 
-	tx, err := db.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO spans (id, trace_id, project_id, name, start_time, duration, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
 	for _, s := range spans {
-		if _, err := stmt.ExecContext(ctx,
-			s.Id.String(), s.TraceId.String(), s.ProjectId.String(),
-			s.Name, s.StartTime.UTC().Format(time.RFC3339Nano),
-			int64(s.Duration), s.RecordedAt.UTC().Format(time.RFC3339Nano),
-		); err != nil {
+		row := spanToRow(s)
+		if err := lit.InsertExistingUuid(db.TelemetryDB, &row); err != nil {
 			return err
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 func (r *spanRepository) FindByTraceId(ctx context.Context, projectId, traceId uuid.UUID) ([]models.Span, error) {
-	rows, err := db.DB.QueryContext(ctx,
+	rows, err := lit.SelectNamed[span](db.TelemetryDB,
 		`SELECT id, trace_id, project_id, name, start_time, duration, recorded_at
 		FROM spans
-		WHERE project_id = ? AND trace_id = ?
+		WHERE project_id = :project_id AND trace_id = :trace_id
 		ORDER BY start_time ASC`,
-		projectId.String(), traceId.String())
+		lit.P{"project_id": projectId, "trace_id": traceId})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var spans []models.Span
-	for rows.Next() {
-		var s models.Span
-		var idStr, traceIdStr, projectIdStr string
-		var startTimeStr, recordedAtStr string
-		if err := rows.Scan(&idStr, &traceIdStr, &projectIdStr, &s.Name, &startTimeStr, &s.Duration, &recordedAtStr); err != nil {
-			return nil, err
-		}
-		s.Id, _ = uuid.Parse(idStr)
-		s.TraceId, _ = uuid.Parse(traceIdStr)
-		s.ProjectId, _ = uuid.Parse(projectIdStr)
-		s.StartTime, _ = time.Parse(time.RFC3339Nano, startTimeStr)
-		s.RecordedAt, _ = time.Parse(time.RFC3339Nano, recordedAtStr)
-		spans = append(spans, s)
+	spans := make([]models.Span, 0, len(rows))
+	for _, row := range rows {
+		spans = append(spans, row.toModel())
 	}
-
 	return spans, nil
 }
 

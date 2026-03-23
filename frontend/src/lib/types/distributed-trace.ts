@@ -1,7 +1,7 @@
 export type DistributedTraceNode = {
 	projectId: string;
 	projectName: string;
-	traceType: 'endpoint' | 'task';
+	traceType: 'endpoint' | 'task' | 'exception';
 	endpoint?: {
 		id: string;
 		endpoint: string;

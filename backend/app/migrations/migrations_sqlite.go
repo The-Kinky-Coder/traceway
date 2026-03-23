@@ -3,6 +3,7 @@
 package migrations
 
 import (
+	"database/sql"
 	"embed"
 	"fmt"
 	"sort"
@@ -22,20 +23,33 @@ var ExtensionPostgresMigrations []ExtensionMigration
 //go:embed sqlite/*.sql
 var migrationsSqliteFS embed.FS
 
-func Run(dbType string) error {
-	sqliteDB := db.DB
+//go:embed sqlite_telemetry/*.sql
+var migrationsSqliteTelemetryFS embed.FS
 
-	_, err := sqliteDB.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
-		version TEXT PRIMARY KEY,
-		applied_at DATETIME DEFAULT (datetime('now'))
-	)`)
-	if err != nil {
-		return fmt.Errorf("failed to create schema_migrations table: %w", err)
+func Run(dbType string) error {
+	if err := runMigrationsOn(db.DB, migrationsSqliteFS, "sqlite", "schema_migrations"); err != nil {
+		return fmt.Errorf("main db migrations: %w", err)
 	}
 
-	entries, err := migrationsSqliteFS.ReadDir("sqlite")
+	if err := runMigrationsOn(db.TelemetryDB, migrationsSqliteTelemetryFS, "sqlite_telemetry", "schema_migrations"); err != nil {
+		return fmt.Errorf("telemetry db migrations: %w", err)
+	}
+
+	return nil
+}
+
+func runMigrationsOn(target *sql.DB, fsys embed.FS, dir string, trackingTable string) error {
+	_, err := target.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+		version TEXT PRIMARY KEY,
+		applied_at DATETIME DEFAULT (datetime('now'))
+	)`, trackingTable))
 	if err != nil {
-		return fmt.Errorf("failed to read sqlite migrations dir: %w", err)
+		return fmt.Errorf("failed to create %s table: %w", trackingTable, err)
+	}
+
+	entries, err := fsys.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("failed to read migrations dir %s: %w", dir, err)
 	}
 
 	var files []string
@@ -50,7 +64,7 @@ func Run(dbType string) error {
 		version := strings.TrimSuffix(file, ".up.sql")
 
 		var count int
-		err := sqliteDB.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = ?", version).Scan(&count)
+		err := target.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE version = ?", trackingTable), version).Scan(&count)
 		if err != nil {
 			return fmt.Errorf("failed to check migration version %s: %w", version, err)
 		}
@@ -58,7 +72,7 @@ func Run(dbType string) error {
 			continue
 		}
 
-		content, err := migrationsSqliteFS.ReadFile("sqlite/" + file)
+		content, err := fsys.ReadFile(dir + "/" + file)
 		if err != nil {
 			return fmt.Errorf("failed to read migration file %s: %w", file, err)
 		}
@@ -69,12 +83,12 @@ func Run(dbType string) error {
 			if stmt == "" {
 				continue
 			}
-			if _, err := sqliteDB.Exec(stmt); err != nil {
+			if _, err := target.Exec(stmt); err != nil {
 				return fmt.Errorf("failed to execute migration %s: %w", file, err)
 			}
 		}
 
-		if _, err := sqliteDB.Exec("INSERT INTO schema_migrations (version) VALUES (?)", version); err != nil {
+		if _, err := target.Exec(fmt.Sprintf("INSERT INTO %s (version) VALUES (?)", trackingTable), version); err != nil {
 			return fmt.Errorf("failed to record migration version %s: %w", version, err)
 		}
 	}
