@@ -98,8 +98,25 @@ function TestButton() {
 
 Click the button and check your Traceway dashboard to verify the error appears.
 
+## Distributed Tracing
+
+The SDK automatically instruments `fetch` to propagate a `traceway-trace-id` header on same-origin requests. This links frontend errors to the backend requests that caused them — no extra configuration needed.
+
+For Axios users, add the interceptor to your instance:
+
+```jsx
+import axios from "axios";
+import { createAxiosInterceptor } from "@tracewayapp/frontend";
+
+const api = axios.create({ baseURL: "/api" });
+api.interceptors.request.use(createAxiosInterceptor());
+```
+
+See the [Distributed Tracing](/client/js-sdk/distributed-tracing) guide for full details.
+
 ## Next Steps
 
 - [TracewayProvider](/client/react/provider) - Configuration options
 - [Error Boundary](/client/react/error-boundary) - Automatic error capture
 - [Hooks](/client/react/hooks) - Manual error capture
+- [Distributed Tracing](/client/js-sdk/distributed-tracing) - Frontend ↔ backend correlation

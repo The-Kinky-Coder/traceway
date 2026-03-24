@@ -68,10 +68,23 @@ For each request, the middleware captures:
 ## How It Works
 
 1. **Request Start**: Creates a new trace context with `withTraceContext()`
-2. **Request Processing**: Your controllers and services run within the trace context
-3. **Response Finish**: On the `res.finish` event:
+2. **Distributed Trace ID**: If the request contains a `traceway-trace-id` header (sent by the frontend SDK), the middleware reads it, echoes it back in the response, and stores it in the trace context
+3. **Request Processing**: Your controllers and services run within the trace context
+4. **Response Finish**: On the `res.finish` event:
    - Records status code and body size with `setTraceResponseInfo()`
    - Captures the trace with `captureCurrentTrace()`
+
+## Distributed Tracing
+
+The middleware automatically supports distributed tracing between the Traceway frontend SDK and your backend. When the frontend SDK sends a `traceway-trace-id` header (automatically via `fetch` instrumentation or manually via the Axios interceptor), the middleware:
+
+1. Reads the header from the incoming request
+2. Echoes it back in the response header (useful for debugging)
+3. Passes it into the trace context — all traces and exceptions captured during that request are tagged with the distributed trace ID
+
+This lets you correlate frontend errors with their triggering backend requests in the Traceway dashboard. No extra configuration is needed — if the middleware is installed, distributed tracing works out of the box.
+
+See the [JS SDK Distributed Tracing](/client/js-sdk/distributed-tracing) guide for frontend setup details.
 
 ## Ignored Routes
 

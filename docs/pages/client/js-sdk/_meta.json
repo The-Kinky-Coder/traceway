@@ -3,6 +3,7 @@
   "initialization": "Initialization",
   "exceptions": "Exceptions",
   "messages": "Messages",
+  "distributed-tracing": "Distributed Tracing",
   "flush": "Flush & Lifecycle",
   "sourcemap-upload": "Source Maps",
   "session-replay": "Session Replay"

@@ -34,6 +34,7 @@ await withTraceContext(
 | `isTask` | `boolean` | No | Mark as background task instead of HTTP trace |
 | `attributes` | `Record<string, string>` | No | Initial trace attributes |
 | `clientIP` | `string` | No | Client IP address for HTTP traces |
+| `distributedTraceId` | `string` | No | Distributed trace ID from an incoming `traceway-trace-id` header (for frontend ↔ backend correlation) |
 
 ## Reading Trace Context
 
@@ -207,7 +208,69 @@ const elapsedMs = getTraceDuration();
 // Returns 0 if not in a trace context
 ```
 
-## Express Middleware Example
+## Distributed Tracing
+
+### getDistributedTraceId
+
+Get the distributed trace ID from the current trace context:
+
+```typescript
+import { getDistributedTraceId } from "@tracewayapp/backend";
+
+const distributedId = getDistributedTraceId();
+// Returns undefined if no distributed trace ID is set
+```
+
+### Express Middleware with Distributed Tracing
+
+When building a custom Express middleware, read the `traceway-trace-id` header and pass it into the trace context to enable frontend ↔ backend correlation:
+
+```typescript
+import {
+  withTraceContext,
+  setTraceAttribute,
+  setTraceResponseInfo,
+  captureCurrentTrace,
+  captureException,
+} from "@tracewayapp/backend";
+
+function tracingMiddleware(req, res, next) {
+  const distributedTraceId = req.headers["traceway-trace-id"];
+
+  if (distributedTraceId) {
+    res.setHeader("traceway-trace-id", distributedTraceId);
+  }
+
+  withTraceContext(
+    {
+      endpoint: `${req.method} ${req.path}`,
+      clientIP: req.ip,
+      distributedTraceId,
+    },
+    async () => {
+      if (req.user) {
+        setTraceAttribute("userId", req.user.id);
+      }
+
+      res.on("finish", () => {
+        setTraceResponseInfo(res.statusCode, res.get("content-length") || 0);
+        captureCurrentTrace();
+      });
+
+      try {
+        await next();
+      } catch (error) {
+        captureException(error);
+        throw error;
+      }
+    }
+  );
+}
+```
+
+See the [JS SDK Distributed Tracing](/client/js-sdk/distributed-tracing) guide for frontend setup details.
+
+## Express Middleware Example (Basic)
 
 ```typescript
 import {
@@ -225,12 +288,10 @@ function tracingMiddleware(req, res, next) {
       clientIP: req.ip,
     },
     async () => {
-      // Add user info if authenticated
       if (req.user) {
         setTraceAttribute("userId", req.user.id);
       }
 
-      // Capture response on finish
       res.on("finish", () => {
         setTraceResponseInfo(res.statusCode, res.get("content-length") || 0);
         captureCurrentTrace();

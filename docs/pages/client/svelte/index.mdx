@@ -103,6 +103,23 @@ For SvelteKit, set up Traceway in your root layout:
 <slot />
 ```
 
+## Distributed Tracing
+
+The SDK automatically instruments `fetch` to propagate a `traceway-trace-id` header on same-origin requests. This links frontend errors to the backend requests that caused them — no extra configuration needed.
+
+For Axios users, add the interceptor to your instance:
+
+```javascript
+import axios from "axios";
+import { createAxiosInterceptor } from "@tracewayapp/frontend";
+
+const api = axios.create({ baseURL: "/api" });
+api.interceptors.request.use(createAxiosInterceptor());
+```
+
+See the [Distributed Tracing](/client/js-sdk/distributed-tracing) guide for full details.
+
 ## Next Steps
 
 - [Context Setup](/client/svelte/context) - Configuration and advanced usage
+- [Distributed Tracing](/client/js-sdk/distributed-tracing) - Frontend ↔ backend correlation
