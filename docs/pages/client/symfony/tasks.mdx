@@ -1,250 +1,35 @@
 # Tasks
 
-OpenTelemetry PHP does not have auto-instrumentation for Symfony Messenger. To trace background tasks consumed by your workers, you need to instrument them manually. There are two approaches: creating spans directly in each handler, or using a Messenger middleware that handles it automatically.
+The bundle automatically traces Symfony Messenger messages. Each consumed message appears as a task in Traceway with its duration, status, and any child spans.
 
-## Manual Setup
+## Setup
 
-The simplest approach is to create a root span directly inside each message handler.
+Add `messenger_root_spans: true` to your bundle config so consumed messages appear as independent tasks (not children of the HTTP request that dispatched them):
 
-### Basic Handler
-
-Create a tracer, build a root span with `setParent(false)` and `KIND_CONSUMER`, activate it, and always end the span in a `finally` block:
-
-```php
-use OpenTelemetry\API\Globals;
-use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\API\Trace\StatusCode;
-
-#[AsMessageHandler]
-class EmailSendHandler
-{
-    public function __invoke(EmailSendMessage $message): void
-    {
-        $tracer = Globals::tracerProvider()->getTracer('app');
-        $span = $tracer->spanBuilder('email.send')
-            ->setParent(false)
-            ->setSpanKind(SpanKind::KIND_CONSUMER)
-            ->startSpan();
-        $scope = $span->activate();
-
-        try {
-            $span->setAttribute('email.to', $message->to);
-            $span->setAttribute('email.subject', $message->subject);
-
-            $this->mailer->send($message);
-        } catch (\Throwable $e) {
-            $span->recordException($e);
-            $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
-            throw $e;
-        } finally {
-            $scope->detach();
-            $span->end();
-        }
-    }
-}
+```yaml filename="config/packages/open_telemetry.yaml"
+open_telemetry:
+    messenger_root_spans: true
 ```
 
-Key points:
-- **`setParent(false)`** makes this a new trace root, not a child of the HTTP request that dispatched the message
-- **`activate()`** sets the span as the current active span so child spans (manual or auto-instrumented) nest correctly under it
-- **`try/catch/finally`** ensures errors are recorded and the span is always ended and scope detached
+That's it — every consumed message is now traced automatically.
 
-### Handler with Child Spans
+## What Gets Captured
 
-For handlers with distinct sub-operations, create child spans using the tracer. They automatically nest under the activated root span:
+For each consumed message, the bundle records:
 
-```php
-use OpenTelemetry\API\Globals;
-use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\API\Trace\StatusCode;
+- **Span name** — the message class name (e.g., `EmailSendMessage process`)
+- **Duration** — total handler execution time
+- **Transport** — which transport delivered the message (e.g., `async`)
+- **Errors** — exceptions are recorded with stack traces and the span is marked as failed
+- **Child spans** — any spans created inside the handler nest under the task span
 
-#[AsMessageHandler]
-class PaymentProcessorHandler
-{
-    public function __invoke(PaymentProcessorMessage $message): void
-    {
-        $tracer = Globals::tracerProvider()->getTracer('app');
-        $span = $tracer->spanBuilder('payment.processor')
-            ->setParent(false)
-            ->setSpanKind(SpanKind::KIND_CONSUMER)
-            ->startSpan();
-        $scope = $span->activate();
+## Adding Attributes in Handlers
 
-        try {
-            // Child span for validation
-            $validateSpan = $tracer->spanBuilder('validate.payment')
-                ->setSpanKind(SpanKind::KIND_INTERNAL)
-                ->startSpan();
-            $validateSpan->setAttribute('payment.amount', $message->amount);
-            $validateSpan->setAttribute('payment.currency', $message->currency);
-            $this->validate($message);
-            $validateSpan->end();
-
-            // Child span for gateway call
-            $chargeSpan = $tracer->spanBuilder('charge.gateway')
-                ->setSpanKind(SpanKind::KIND_CLIENT)
-                ->startSpan();
-            try {
-                $this->chargeGateway($message);
-            } catch (\Throwable $e) {
-                $chargeSpan->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
-                $chargeSpan->recordException($e);
-                throw $e;
-            } finally {
-                $chargeSpan->end();
-            }
-        } catch (\Throwable $e) {
-            $span->recordException($e);
-            $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
-            throw $e;
-        } finally {
-            $scope->detach();
-            $span->end();
-        }
-    }
-}
-```
-
-import { Callout } from 'nextra/components'
-
-<Callout type="warning">
-If you forget to call `activate()` on the root span, child spans will not nest under it — they will be created as separate traces instead.
-</Callout>
-
-## Automatic Setup with Middleware
-
-For a cleaner approach, use a Symfony Messenger middleware that wraps every consumed message in a root span automatically. This eliminates the boilerplate from each handler.
-
-### Step 1: Create the Middleware
-
-```php filename="src/Messenger/TracingMiddleware.php"
-<?php
-
-namespace App\Messenger;
-
-use OpenTelemetry\API\Globals;
-use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\API\Trace\StatusCode;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
-use Symfony\Component\Messenger\Middleware\StackInterface;
-use Symfony\Component\Messenger\Stamp\ReceivedStamp;
-
-class TracingMiddleware implements MiddlewareInterface
-{
-    public function handle(Envelope $envelope, StackInterface $stack): Envelope
-    {
-        // Only trace on the consumer side
-        if (!$envelope->last(ReceivedStamp::class)) {
-            return $stack->next()->handle($envelope, $stack);
-        }
-
-        $message = $envelope->getMessage();
-        $spanName = $this->resolveSpanName($message);
-
-        $tracer = Globals::tracerProvider()->getTracer('app');
-        $span = $tracer->spanBuilder($spanName)
-            ->setParent(false)
-            ->setSpanKind(SpanKind::KIND_CONSUMER)
-            ->startSpan();
-        $scope = $span->activate();
-
-        try {
-            $envelope = $stack->next()->handle($envelope, $stack);
-        } catch (\Throwable $e) {
-            $span->recordException($e);
-            $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
-            throw $e;
-        } finally {
-            $span->end();
-            $scope->detach();
-        }
-
-        return $envelope;
-    }
-
-    private function resolveSpanName(object $message): string
-    {
-        if ($message instanceof TracedMessage) {
-            return $message->getSpanName();
-        }
-
-        // Strip "Message" suffix, convert PascalCase -> dot.separated
-        $class = (new \ReflectionClass($message))->getShortName();
-        $class = preg_replace('/Message$/', '', $class);
-        $name = preg_replace('/([a-z])([A-Z])/', '$1.$2', $class);
-        return strtolower($name);
-    }
-}
-```
-
-The middleware:
-- **Only traces on the consumer side** — checks for `ReceivedStamp` so dispatching is not affected
-- **Creates a detached root span** — `setParent(false)` ensures the task span is a new trace, not a child of the HTTP request that dispatched it
-- **Activates scope** — so child spans (manual or auto-instrumented) nest correctly under the root
-- **Handles errors** — records the exception and sets error status, then re-throws so Messenger's retry/failure handling works normally
-
-### Step 2: Create the TracedMessage Interface
-
-For custom span names, create an optional interface that message classes can implement:
-
-```php filename="src/Messenger/TracedMessage.php"
-<?php
-
-namespace App\Messenger;
-
-interface TracedMessage
-{
-    public function getSpanName(): string;
-}
-```
-
-```php filename="src/Message/OrderFulfillmentMessage.php"
-use App\Messenger\TracedMessage;
-
-class OrderFulfillmentMessage implements TracedMessage
-{
-    public function __construct(
-        public readonly string $orderId,
-    ) {}
-
-    public function getSpanName(): string
-    {
-        return 'orders.fulfill';
-    }
-}
-```
-
-### Step 3: Register the Middleware
-
-Add the middleware to your bus configuration:
-
-```yaml filename="config/packages/messenger.yaml"
-framework:
-    messenger:
-        buses:
-            messenger.bus.default:
-                middleware:
-                    - 'App\Messenger\TracingMiddleware'
-```
-
-### Span Name Resolution
-
-By default, the middleware derives the span name from the message class name — it strips the `Message` suffix and converts PascalCase to dot-separated lowercase:
-
-| Message Class | Span Name |
-|---|---|
-| `EmailSendMessage` | `email.send` |
-| `UserDataSyncMessage` | `user.data.sync` |
-| `DataProcessorMessage` | `data.processor` |
-| `PaymentProcessorMessage` | `payment.processor` |
-
-### Accessing the Root Span in Handlers
-
-Since the middleware activates the span, handlers can access it via `Span::getCurrent()` to add attributes:
+Since the bundle activates the task span before your handler runs, use `Span::getCurrent()` to add custom attributes:
 
 ```php
 use OpenTelemetry\API\Trace\Span;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 class EmailSendHandler
@@ -261,53 +46,35 @@ class EmailSendHandler
 }
 ```
 
-### Adding Child Spans
+## Child Spans in Handlers
 
-For handlers with distinct sub-operations, create child spans using the tracer. They automatically nest under the middleware's root span:
+For handlers with distinct sub-operations, inject `TracingInterface` to create child spans. They automatically nest under the task's root span:
 
 ```php
-use OpenTelemetry\API\Globals;
-use OpenTelemetry\API\Trace\Span;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\API\Trace\StatusCode;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Traceway\OpenTelemetryBundle\TracingInterface;
 
 #[AsMessageHandler]
 class PaymentProcessorHandler
 {
+    public function __construct(
+        private readonly TracingInterface $tracing,
+    ) {}
+
     public function __invoke(PaymentProcessorMessage $message): void
     {
-        $tracer = Globals::tracerProvider()->getTracer('app');
+        $this->tracing->trace('validate.payment', function () use ($message) {
+            $this->validate($message);
+        }, ['payment.amount' => $message->amount, 'payment.currency' => $message->currency]);
 
-        // Child span for validation
-        $validateSpan = $tracer->spanBuilder('validate.payment')
-            ->setSpanKind(SpanKind::KIND_INTERNAL)
-            ->startSpan();
-        $validateSpan->setAttribute('payment.amount', $message->amount);
-        $validateSpan->setAttribute('payment.currency', $message->currency);
-        $this->validate($message);
-        $validateSpan->end();
-
-        // Child span for gateway call
-        $chargeSpan = $tracer->spanBuilder('charge.gateway')
-            ->setSpanKind(SpanKind::KIND_CLIENT)
-            ->startSpan();
-        try {
+        $this->tracing->trace('charge.gateway', function () use ($message) {
             $this->chargeGateway($message);
-        } catch (\Throwable $e) {
-            $chargeSpan->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
-            $chargeSpan->recordException($e);
-
-            // Propagate error to the root span
-            $rootSpan = Span::getCurrent();
-            $rootSpan->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
-            $rootSpan->recordException($e);
-        } finally {
-            $chargeSpan->end();
-        }
+        }, kind: SpanKind::KIND_CLIENT);
     }
 }
 ```
 
-## Auto-Instrumentation
+## Dispatch Tracing
 
-If you have `opentelemetry-auto-pdo` installed (see [Quick Start](/client/symfony)), database operations in your handlers automatically create child spans under the root span. No additional code is needed — any PDO calls made during message handling will appear as nested spans in Traceway.
+The bundle also traces the dispatch side — when your controller or service dispatches a message, a PRODUCER span is created. W3C trace context is injected into the message envelope so the consumer span links back to the dispatching trace (unless `messenger_root_spans` is `true`, in which case the consumer creates an independent root span).

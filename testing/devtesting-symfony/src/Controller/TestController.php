@@ -10,9 +10,14 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Traceway\OpenTelemetryBundle\TracingInterface;
 
 class TestController
 {
+    public function __construct(
+        private readonly TracingInterface $tracing,
+    ) {}
+
     #[Route('/test-ok', methods: ['GET'])]
     public function testOk(): JsonResponse
     {
@@ -35,33 +40,19 @@ class TestController
     #[Route('/test-spans', methods: ['GET'])]
     public function testSpans(): JsonResponse
     {
-        $tracer = Globals::tracerProvider()->getTracer('devtesting-symfony');
+        $this->tracing->trace('db.and.cache', function () {
+            $this->tracing->trace('db.query', function () {
+                usleep((50 + random_int(0, 100)) * 1000);
+            });
 
-        $dbAndCacheSpan = $tracer->spanBuilder('db.and.cache')
-            ->setSpanKind(SpanKind::KIND_INTERNAL)
-            ->startSpan();
-        $dbAndCacheScope = $dbAndCacheSpan->activate();
+            $this->tracing->trace('cache.set', function () {
+                usleep((10 + random_int(0, 30)) * 1000);
+            });
 
-        $dbSpan = $tracer->spanBuilder('db.query')
-            ->setSpanKind(SpanKind::KIND_INTERNAL)
-            ->startSpan();
-        usleep((50 + random_int(0, 100)) * 1000);
-        $dbSpan->end();
-
-        $cacheSpan = $tracer->spanBuilder('cache.set')
-            ->setSpanKind(SpanKind::KIND_INTERNAL)
-            ->startSpan();
-        usleep((10 + random_int(0, 30)) * 1000);
-        $cacheSpan->end();
-
-        $httpSpan = $tracer->spanBuilder('http.external_api')
-            ->setSpanKind(SpanKind::KIND_CLIENT)
-            ->startSpan();
-        usleep((100 + random_int(0, 200)) * 1000);
-        $httpSpan->end();
-
-        $dbAndCacheSpan->end();
-        $dbAndCacheScope->detach();
+            $this->tracing->trace('http.external_api', function () {
+                usleep((100 + random_int(0, 200)) * 1000);
+            }, kind: SpanKind::KIND_CLIENT);
+        });
 
         return new JsonResponse(['status' => 'ok', 'message' => 'Spans captured']);
     }

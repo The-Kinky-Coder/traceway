@@ -3,24 +3,23 @@
 namespace App\MessageHandler;
 
 use App\Message\DataProcessorMessage;
-use OpenTelemetry\API\Globals;
 use OpenTelemetry\API\Trace\Span;
-use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Traceway\OpenTelemetryBundle\TracingInterface;
 
 #[AsMessageHandler]
 class DataProcessorHandler
 {
+    public function __construct(
+        private readonly TracingInterface $tracing,
+    ) {}
+
     public function __invoke(DataProcessorMessage $message): void
     {
-        $tracer = Globals::tracerProvider()->getTracer('devtesting-symfony');
-
-        $loadSpan = $tracer->spanBuilder('loading data')
-            ->setSpanKind(SpanKind::KIND_INTERNAL)
-            ->startSpan();
-        usleep(random_int(100, 2000) * 1000);
-        $loadSpan->end();
+        $this->tracing->trace('loading data', function () {
+            usleep(random_int(100, 2000) * 1000);
+        });
 
         $rootSpan = Span::getCurrent();
 

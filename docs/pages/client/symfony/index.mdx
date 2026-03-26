@@ -1,37 +1,30 @@
 # Symfony
 
-Symfony integrates with Traceway via [OpenTelemetry](https://opentelemetry.io/). The PHP OTel extension auto-instruments your Symfony application and exports traces and metrics to Traceway's OTLP endpoints — no manual instrumentation needed.
+The `traceway/opentelemetry-symfony` bundle automatically instruments your Symfony application and exports traces to Traceway's OTLP endpoints — no manual instrumentation needed.
 
 ## Prerequisites
 
 - PHP 8.1+
+- Symfony 6.4+
 - Composer
 - A Traceway project (create one in the dashboard)
 
-## Step 1: Install the PHP OTel Extension
-
-The OpenTelemetry PHP extension provides auto-instrumentation:
+## Step 1: Install Packages
 
 ```bash
-pecl install opentelemetry
+composer require traceway/opentelemetry-symfony open-telemetry/sdk open-telemetry/exporter-otlp php-http/guzzle7-adapter
 ```
 
-Enable it in your `php.ini`:
+## Step 2: Register the Bundle
 
-```ini
-extension=opentelemetry.so
-```
+If Symfony Flex doesn't register it automatically, add it to `config/bundles.php`:
 
-## Step 2: Install Composer Packages
-
-```bash
-composer require open-telemetry/sdk open-telemetry/exporter-otlp
-```
-
-For automatic Symfony instrumentation, also install:
-
-```bash
-composer require open-telemetry/opentelemetry-auto-symfony
+```php
+// config/bundles.php
+return [
+    // ...
+    Traceway\OpenTelemetryBundle\OpenTelemetryBundle::class => ['all' => true],
+];
 ```
 
 ## Step 3: Configure Environment Variables
@@ -52,14 +45,9 @@ Your Traceway dashboard includes a **Connection** page with a ready-made config 
 
 > **Note:** Use `http/json` instead of `http/protobuf`. The protobuf encoder has known deprecation warnings on PHP 8.4+ that can cause noisy logs.
 
-## Step 4: Update Your Front Controller
+## Step 4: Initialize the SDK
 
-The `opentelemetry-auto-symfony` package has two issues that need a workaround in your `public/index.php`:
-
-1. **Endpoint names** — `http.route` is set to the internal Symfony route name (e.g., `app_user_show`) instead of the URL path template (`/users/{id}`)
-2. **500 errors not exported** — when Symfony renders an error page via a sub-request, the sub-request's OTel scope shadows the main request's scope, causing the main span to never be ended or exported
-
-Register this hook **after** the OTel autoloader to fix both issues:
+Add the SDK autoloader to your `public/index.php`, after the Composer autoload:
 
 ```php
 <?php
@@ -71,50 +59,6 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 \OpenTelemetry\SDK\SdkAutoloader::autoload();
 
-// Fixes for Symfony's OTel auto-instrumentation:
-// 1. Corrects http.route from internal route name to URL path template
-// 2. Cleans up sub-request scopes so 500 error spans are exported
-\OpenTelemetry\Instrumentation\hook(
-    \Symfony\Component\HttpKernel\HttpKernel::class,
-    'handle',
-    post: static function (
-        \Symfony\Component\HttpKernel\HttpKernel $kernel,
-        array $params,
-        mixed $returnValue,
-        ?\Throwable $exception
-    ): void {
-        $request = ($params[0] instanceof \Symfony\Component\HttpFoundation\Request) ? $params[0] : null;
-        if (null === $request) return;
-
-        $type = $params[1] ?? \Symfony\Component\HttpKernel\HttpKernelInterface::MAIN_REQUEST;
-
-        // Sub-requests (e.g., error page rendering) push an extra OTel scope
-        // that shadows the main request. Clean up immediately.
-        if ($type === \Symfony\Component\HttpKernel\HttpKernelInterface::SUB_REQUEST) {
-            $scope = \OpenTelemetry\Context\Context::storage()->scope();
-            if (null !== $scope) {
-                $span = \OpenTelemetry\API\Trace\Span::fromContext($scope->context());
-                $scope->detach();
-                $span->end();
-            }
-            return;
-        }
-
-        // For main requests: fix route name to path template
-        $routeParams = $request->attributes->get('_route_params', []);
-        $path = $request->getPathInfo();
-        if (\is_array($routeParams)) {
-            foreach ($routeParams as $name => $value) {
-                if (\is_string($value) && '' !== $value) {
-                    $path = str_replace($value, '{' . $name . '}', $path);
-                }
-            }
-        }
-
-        $request->attributes->set('_route', $path);
-    }
-);
-
 $kernel = new Kernel($_SERVER['APP_ENV'] ?? 'dev', (bool) ($_SERVER['APP_DEBUG'] ?? true));
 $request = \Symfony\Component\HttpFoundation\Request::createFromGlobals();
 $response = $kernel->handle($request);
@@ -124,12 +68,30 @@ $kernel->terminate($request, $response);
 
 ## What Gets Captured
 
-Once configured, the OTel auto-instrumentation captures:
+Once configured, the bundle automatically captures:
 
-- **Endpoints** — every HTTP request handled by Symfony (method, route, duration)
+- **Endpoints** — every HTTP request with method and route template (e.g., `GET /users/{id}`)
 - **Status codes** — 2xx, 4xx, 5xx responses
-- **Exceptions** — unhandled errors and exceptions with stack traces
-- **Metrics** — request count, duration histograms
+- **Exceptions** — unhandled errors with stack traces
+- **Client IP, body size, user agent** — standard HTTP attributes
+- **Doctrine queries** — if `doctrine/dbal` is installed
+- **Console commands** — Symfony CLI commands
+- **Messenger jobs** — dispatched and consumed messages (see [Tasks](/client/symfony/tasks))
+
+## Configuration (Optional)
+
+Create `config/packages/open_telemetry.yaml` to customize behavior:
+
+```yaml
+open_telemetry:
+    excluded_paths:
+        - /_profiler
+        - /_wdt
+        - /health
+    record_client_ip: true          # default: true (set false for GDPR)
+    error_status_threshold: 500     # HTTP status >= this marked as error
+    messenger_root_spans: true      # tasks appear as independent jobs in Traceway
+```
 
 ## Test Your Integration
 
@@ -158,5 +120,6 @@ Visit `/testing` in your browser, then check the Traceway dashboard — the exce
 
 - [Exceptions](/client/symfony/exceptions) — manually capture caught exceptions with context
 - [Spans](/client/symfony/spans) — create custom spans to measure sub-operations
+- [Tasks](/client/symfony/tasks) — trace Symfony Messenger background jobs
 - [Metrics](/client/symfony/metrics) — track custom counters, histograms, and gauges
 - [OpenTelemetry docs](/client/otel) — how OTel traces and metrics map to Traceway

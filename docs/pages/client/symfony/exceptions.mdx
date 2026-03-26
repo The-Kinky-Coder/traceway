@@ -1,23 +1,22 @@
 # Exceptions
 
-The OTel auto-instrumentation captures unhandled exceptions automatically. To report caught exceptions or add context to errors, use the OpenTelemetry PHP API directly.
+The bundle automatically captures unhandled exceptions and records them on the request span. To report caught exceptions or add context to errors, use the OpenTelemetry PHP API directly.
 
 ## Recording an Exception on the Current Span
 
 When you catch an error but want it reported to Traceway, record it as an event on the active span:
 
 ```php
-use OpenTelemetry\API\Globals;
+use OpenTelemetry\API\Trace\Span;
 use OpenTelemetry\API\Trace\StatusCode;
 
 try {
     $this->paymentGateway->charge($order);
 } catch (\Throwable $e) {
-    $span = OpenTelemetry\API\Trace\Span::getCurrent();
+    $span = Span::getCurrent();
     $span->recordException($e);
     $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
 
-    // Handle gracefully or re-throw
     throw $e;
 }
 ```
@@ -81,40 +80,6 @@ class PaymentService
 }
 ```
 
-## Symfony Event Listener
-
-To capture all exceptions globally (including ones handled by Symfony's error system), register an event listener:
-
-```php
-// src/EventListener/ExceptionListener.php
-namespace App\EventListener;
-
-use OpenTelemetry\API\Trace\Span;
-use OpenTelemetry\API\Trace\StatusCode;
-use Symfony\Component\HttpKernel\Event\ExceptionEvent;
-
-class ExceptionListener
-{
-    public function onKernelException(ExceptionEvent $event): void
-    {
-        $span = Span::getCurrent();
-        $exception = $event->getThrowable();
-
-        $span->recordException($exception);
-        $span->setStatus(StatusCode::STATUS_ERROR, $exception->getMessage());
-    }
-}
-```
-
-Register it in `config/services.yaml`:
-
-```yaml
-services:
-    App\EventListener\ExceptionListener:
-        tags:
-            - { name: kernel.event_listener, event: kernel.exception }
-```
-
 ## Custom Error Types
 
 Custom exception classes work the same way. The exception type name appears in the Traceway dashboard:
@@ -131,7 +96,6 @@ class InsufficientFundsException extends \RuntimeException
     }
 }
 
-// When caught and recorded, Traceway shows "InsufficientFundsException" as the type
 try {
     $this->withdraw($accountId, $amount);
 } catch (InsufficientFundsException $e) {

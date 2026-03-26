@@ -1,0 +1,5 @@
+open_telemetry:
+    messenger_root_spans: true
+    excluded_paths:
+        - /_profiler
+        - /_wdt

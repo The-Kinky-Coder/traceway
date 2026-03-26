@@ -1,10 +1,5 @@
 framework:
     messenger:
-        buses:
-            messenger.bus.default:
-                middleware:
-                    - 'App\Messenger\TracingMiddleware'
-
         transports:
             async:
                 dsn: 'doctrine://default'
