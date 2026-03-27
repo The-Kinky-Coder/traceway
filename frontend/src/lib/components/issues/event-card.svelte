@@ -151,5 +151,5 @@
 </Card.Root>
 
 {#if linkedTrace?.distributedTraceId || occurrence.distributedTraceId}
-	<DistributedTraceCard distributedTraceId={(linkedTrace?.distributedTraceId ?? occurrence.distributedTraceId)!} />
+	<DistributedTraceCard distributedTraceId={(linkedTrace?.distributedTraceId ?? occurrence.distributedTraceId)!} currentExceptionHash={occurrence.exceptionHash} />
 {/if}

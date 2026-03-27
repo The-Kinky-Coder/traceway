@@ -14,9 +14,10 @@
 
 	interface Props {
 		distributedTraceId: string;
+		currentExceptionHash?: string;
 	}
 
-	let { distributedTraceId }: Props = $props();
+	let { distributedTraceId, currentExceptionHash }: Props = $props();
 
 	const timezone = $derived(getTimezone());
 
@@ -112,10 +113,14 @@
 								<Badge variant="destructive" class="shrink-0">Exception</Badge>
 							{/if}
 						</div>
+						{#if currentExceptionHash && node.traceType === 'exception' && node.exception?.exceptionHash === currentExceptionHash}
+						<Badge class="bg-blue-500 hover:bg-blue-500 text-white">You're here</Badge>
+					{:else}
 						<Button variant="ghost" size="sm" onclick={() => navigateToNode(node)}>
 							View
 							<ArrowRight class="ml-1 h-3 w-3" />
 						</Button>
+					{/if}
 					</div>
 					{/each}
 			</div>
