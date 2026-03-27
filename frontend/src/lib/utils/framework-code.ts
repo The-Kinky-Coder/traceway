@@ -31,7 +31,7 @@ export function getInstallCommand(framework: Framework): string {
 		case 'jquery':
 			return 'npm install @tracewayapp/jquery';
 		case 'symfony':
-			return 'composer require open-telemetry/sdk open-telemetry/exporter-otlp open-telemetry/opentelemetry-auto-symfony';
+			return 'composer require traceway/opentelemetry-symfony open-telemetry/exporter-otlp php-http/guzzle7-adapter';
 		case 'cloudflare':
 			return '';
 		case 'opentelemetry':

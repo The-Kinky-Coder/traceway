@@ -12,7 +12,7 @@ The `traceway/opentelemetry-symfony` bundle automatically instruments your Symfo
 ## Step 1: Install Packages
 
 ```bash
-composer require traceway/opentelemetry-symfony open-telemetry/sdk open-telemetry/exporter-otlp php-http/guzzle7-adapter
+composer require traceway/opentelemetry-symfony open-telemetry/exporter-otlp php-http/guzzle7-adapter
 ```
 
 ## Step 2: Register the Bundle
@@ -30,6 +30,8 @@ return [
 ## Step 3: Configure Environment Variables
 
 Add the following to your `.env` file, replacing the endpoint and token with your project values:
+
+> **Important:** `OTEL_PHP_AUTOLOAD_ENABLED=true` is required — without it, the OpenTelemetry SDK will not start and no telemetry will be collected.
 
 ```bash
 OTEL_PHP_AUTOLOAD_ENABLED=true
