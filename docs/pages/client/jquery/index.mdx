@@ -4,26 +4,33 @@ Integrate Traceway into your jQuery application with the `@tracewayapp/jquery` p
 
 ## Installation
 
+### Via npm
+
 ```bash
 npm install @tracewayapp/jquery
 ```
-
-Or include via script tag after jQuery:
-
-```html
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="node_modules/@tracewayapp/jquery/dist/index.mjs" type="module"></script>
-```
-
-## Setup
-
-Initialize Traceway after jQuery is loaded:
 
 ```javascript
 import { init } from "@tracewayapp/jquery";
 
 init("your-token@https://traceway.example.com/api/report");
 ```
+
+### Via CDN
+
+No build step needed — add two script tags after jQuery:
+
+```html
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tracewayapp/jquery@1/dist/traceway-jquery.iife.global.js"></script>
+<script>
+  TracewayJQuery.init("your-token@https://traceway.example.com/api/report");
+</script>
+```
+
+## What It Does
+
+Once initialized, the SDK automatically:
 
 This automatically:
 - Captures uncaught JavaScript errors and unhandled promise rejections

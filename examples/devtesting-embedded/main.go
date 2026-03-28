@@ -18,6 +18,9 @@ import (
 //go:embed index.html
 var indexHTML []byte
 
+//go:embed cdn.html
+var cdnHTML []byte
+
 //go:embed static/*
 var staticFS embed.FS
 
@@ -66,6 +69,10 @@ func main() {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", indexHTML)
 	})
 
+	router.GET("/cdn", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", cdnHTML)
+	})
+
 	staticSub, _ := fs.Sub(staticFS, "static")
 	router.StaticFS("/static", http.FS(staticSub))
 
@@ -82,11 +89,12 @@ func main() {
 	})
 
 	fmt.Println()
-	fmt.Println("===========================================")
-	fmt.Printf("  App:        http://localhost:%d\n", appPort)
-	fmt.Println("  Dashboard:  http://localhost:8082")
-	fmt.Println("  Login:      admin@localhost.com / admin")
-	fmt.Println("===========================================")
+	fmt.Println("=================================================")
+	fmt.Printf("  Node build:  http://localhost:%d\n", appPort)
+	fmt.Printf("  CDN (no build): http://localhost:%d/cdn\n", appPort)
+	fmt.Println("  Dashboard:   http://localhost:8082")
+	fmt.Println("  Login:       admin@localhost.com / admin")
+	fmt.Println("=================================================")
 	fmt.Println()
 
 	router.Run(fmt.Sprintf(":%d", appPort))

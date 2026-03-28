@@ -10,6 +10,7 @@ The Traceway JavaScript SDK provides error tracking for browser-based applicatio
 | `@tracewayapp/react` | React bindings with Provider, Error Boundary, and hooks |
 | `@tracewayapp/vue` | Vue 3 plugin and composables |
 | `@tracewayapp/svelte` | Svelte context-based integration |
+| `@tracewayapp/jquery` | jQuery integration with automatic AJAX error capture |
 
 ## Installation
 
@@ -23,6 +24,28 @@ Or use a framework-specific package:
 npm install @tracewayapp/react
 npm install @tracewayapp/vue
 npm install @tracewayapp/svelte
+npm install @tracewayapp/jquery
+```
+
+### Via CDN
+
+The frontend and jQuery packages are also available as standalone scripts — no bundler required:
+
+```html
+<!-- Framework-agnostic (exposes window.Traceway) -->
+<script src="https://cdn.jsdelivr.net/npm/@tracewayapp/frontend@1/dist/traceway.iife.global.js"></script>
+<script>
+  Traceway.init("your-token@https://traceway.example.com/api/report");
+</script>
+```
+
+```html
+<!-- jQuery (exposes window.TracewayJQuery) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tracewayapp/jquery@1/dist/traceway-jquery.iife.global.js"></script>
+<script>
+  TracewayJQuery.init("your-token@https://traceway.example.com/api/report");
+</script>
 ```
 
 ## Connection String Format
