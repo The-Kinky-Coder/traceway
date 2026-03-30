@@ -27,21 +27,9 @@ import { CodeTabs } from "@/components/code-tabs";
 import { ImpactScoreVisual } from "@/components/impact-score-visual";
 import { CostComparison } from "@/components/cost-comparison";
 import { DockerCommand } from "@/components/docker-command";
-
-const frameworks = [
-  { name: "Gin", src: "/images/frameworks/gin.png" },
-  { name: "Chi", src: "/images/frameworks/chi.png" },
-  { name: "Stdlib", src: "/images/frameworks/stdlib.png" },
-  { name: "FastHTTP", src: "/images/frameworks/fasthttp.png" },
-  { name: "Express", src: "/images/frameworks/express.png" },
-  { name: "NestJS", src: "/images/frameworks/nestjs.png" },
-  { name: "Next.js", src: "/images/frameworks/nextjs.png" },
-  { name: "Node.js", src: "/images/frameworks/node.png" },
-  { name: "Svelte", src: "/images/frameworks/svelte.png" },
-  { name: "Remix", src: "/images/frameworks/remix.png" },
-  { name: "OpenTelemetry", src: "/images/frameworks/otel.png" },
-  { name: "Cloudflare", src: "/images/frameworks/cloudflare.png" },
-];
+import { DistributedTraceVisual } from "@/components/distributed-trace-visual";
+import { HomeTabs } from "@/components/home-tabs";
+import { FrameworkMarquee } from "@/components/framework-marquee";
 
 export default function Home() {
   return (
@@ -57,12 +45,13 @@ export default function Home() {
             </span>
           </Link>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-zinc-900">
-            Know what to fix first
+            The full picture behind every error
           </h1>
           <p className="text-zinc-600 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-            Traceway scores every endpoint and exception by real user impact,
-            then ranks them. You open the dashboard and immediately know what
-            needs attention. No triage meetings. No alert fatigue.
+            Traceway attaches session replays, distributed traces, and resolved
+            stack traces to every error automatically. Open an issue and
+            immediately understand what went wrong, across frontend and
+            backend.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="https://docs.tracewayapp.com" className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-all cursor-pointer h-10 px-6 bg-zinc-900 text-white hover:bg-zinc-800 shadow-lg shadow-zinc-900/20">
@@ -85,22 +74,11 @@ export default function Home() {
 
       {/* Section 2: Framework Logos */}
       <section className="pt-0 pb-10 bg-white border-b border-zinc-100">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="mx-auto max-w-4xl">
           <p className="text-center text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-6">
-            Works with OpenTelemetry, Go, JavaScript
+            Works with YOUR stack
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-10">
-            {frameworks.map((fw) => (
-              <Image
-                key={fw.name}
-                src={fw.src}
-                alt={fw.name}
-                width={40}
-                height={40}
-                className="h-8 w-auto opacity-80 hover:opacity-100 transition-all duration-200"
-              />
-            ))}
-          </div>
+          <FrameworkMarquee />
         </div>
       </section>
 
@@ -120,6 +98,45 @@ export default function Home() {
           </div>
           <div className="max-w-4xl mx-auto overflow-x-auto">
             <ImpactScoreVisual />
+          </div>
+        </div>
+      </section>
+
+      {/* OpenTelemetry Support */}
+      <section className="py-16 bg-white border-b border-zinc-100">
+        <div className="container mx-auto px-4 max-w-3xl text-center">
+          <Image
+            src="/images/frameworks/otel.png"
+            alt="OpenTelemetry"
+            width={48}
+            height={48}
+            className="mx-auto mb-6 h-12 w-auto"
+          />
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-zinc-900 tracking-tight">
+            Send from any OpenTelemetry source
+          </h2>
+          <p className="text-zinc-600 text-lg max-w-xl mx-auto">
+            Already instrumented with OTel? Point your OTLP exporter at
+            Traceway. No proprietary SDK lock-in.
+          </p>
+        </div>
+      </section>
+
+      {/* Distributed Tracing Example */}
+      <section className="py-20 bg-zinc-50/50 border-b border-zinc-100">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-zinc-900 tracking-tight">
+              Trace requests across every service
+            </h2>
+            <p className="text-zinc-600 text-lg max-w-2xl mx-auto">
+              Follow a single user action from the browser through your API
+              gateway, backend services, and database calls. See the full
+              picture in one distributed trace.
+            </p>
+          </div>
+          <div className="max-w-4xl mx-auto">
+            <DistributedTraceVisual />
           </div>
         </div>
       </section>
@@ -258,7 +275,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Section 5: Open Source & Self-Hosting */}
+      {/* Section 6: Use Case Tabs */}
+      <section className="py-20 bg-white border-b border-zinc-100">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-zinc-900 tracking-tight">
+              Built for every layer of your stack
+            </h2>
+            <p className="text-zinc-600 text-lg max-w-2xl mx-auto">
+              Whether you&apos;re debugging a slow API, a frontend crash, or a
+              failing microservice call, Traceway gives you the right view.
+            </p>
+          </div>
+          <HomeTabs />
+        </div>
+      </section>
+
+      {/* Section 7: Open Source & Self-Hosting */}
       <section className="py-20 bg-white border-b border-zinc-100">
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="text-center mb-12">
@@ -316,26 +349,6 @@ export default function Home() {
           <div className="flex justify-center mt-10">
             <DockerCommand />
           </div>
-        </div>
-      </section>
-
-      {/* Section 7: OpenTelemetry Support */}
-      <section className="py-16 bg-zinc-50/50 border-b border-zinc-100">
-        <div className="container mx-auto px-4 max-w-3xl text-center">
-          <Image
-            src="/images/frameworks/otel.png"
-            alt="OpenTelemetry"
-            width={48}
-            height={48}
-            className="mx-auto mb-6 h-12 w-auto"
-          />
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-zinc-900 tracking-tight">
-            Send from any OpenTelemetry source
-          </h2>
-          <p className="text-zinc-600 text-lg max-w-xl mx-auto">
-            Already instrumented with OTel? Point your OTLP exporter at
-            Traceway. No proprietary SDK lock-in.
-          </p>
         </div>
       </section>
 
@@ -507,6 +520,81 @@ export default function Home() {
                 start receiving data immediately. There&apos;s no proprietary
                 SDK lock-in - use Traceway&apos;s lightweight middleware or any
                 OTel-compatible instrumentation.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-8" className="border-b-zinc-200">
+              <AccordionTrigger className="text-zinc-900 hover:text-zinc-700 hover:no-underline text-left">
+                How does distributed tracing work?
+              </AccordionTrigger>
+              <AccordionContent className="text-zinc-600 leading-relaxed">
+                Traceway propagates a trace ID across every service in a
+                request chain. The frontend SDK generates the ID and passes it
+                to your backend via headers. Each backend service forwards it
+                to downstream calls. Every span, exception, and session replay
+                recorded with that trace ID is linked together, giving you a
+                complete picture of a single user action across your entire
+                architecture.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-9" className="border-b-zinc-200">
+              <AccordionTrigger className="text-zinc-900 hover:text-zinc-700 hover:no-underline text-left">
+                Does Traceway connect frontend and backend issues?
+              </AccordionTrigger>
+              <AccordionContent className="text-zinc-600 leading-relaxed">
+                Yes. When a backend service returns an error, Traceway links it
+                to the frontend session replay that triggered the request. You
+                see the user&apos;s clicks and navigations alongside the
+                server-side stack trace and span waterfall. Both sides are
+                connected automatically via the shared trace ID.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-10" className="border-b-zinc-200">
+              <AccordionTrigger className="text-zinc-900 hover:text-zinc-700 hover:no-underline text-left">
+                Can I create custom metrics?
+              </AccordionTrigger>
+              <AccordionContent className="text-zinc-600 leading-relaxed">
+                Yes. In addition to the automatic system metrics (CPU, memory,
+                goroutines, GC stats), you can capture custom metrics with a
+                single function call. Custom metrics appear in the metrics
+                dashboard where you can build widget groups with charts and
+                organize them however you want.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-11" className="border-b-zinc-200">
+              <AccordionTrigger className="text-zinc-900 hover:text-zinc-700 hover:no-underline text-left">
+                What types of alerts and notifications does Traceway send?
+              </AccordionTrigger>
+              <AccordionContent className="text-zinc-600 leading-relaxed">
+                Traceway supports notifications via Slack, GitHub Issues, email,
+                and custom webhooks. You can configure rules based on new
+                exceptions, error rate thresholds, or performance degradations.
+                Notifications are sent to the channels you choose so your team
+                is alerted where they already work.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-12" className="border-b-zinc-200">
+              <AccordionTrigger className="text-zinc-900 hover:text-zinc-700 hover:no-underline text-left">
+                What languages and frameworks does Traceway support?
+              </AccordionTrigger>
+              <AccordionContent className="text-zinc-600 leading-relaxed">
+                Traceway has native SDKs for Go (Gin, Chi, Fiber, FastHTTP,
+                net/http) and JavaScript (Node.js, NestJS, React, Vue, Svelte,
+                jQuery, Remix, Next.js). PHP is supported via the Symfony
+                OpenTelemetry bundle. Any language with an OpenTelemetry SDK
+                (Java, Python, .NET, Ruby, and more) can send traces and
+                metrics to Traceway via OTLP.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-13" className="border-b-zinc-200">
+              <AccordionTrigger className="text-zinc-900 hover:text-zinc-700 hover:no-underline text-left">
+                Can I monitor background tasks and cron jobs?
+              </AccordionTrigger>
+              <AccordionContent className="text-zinc-600 leading-relaxed">
+                Yes. Traceway tracks background tasks and scheduled jobs with
+                the same level of detail as HTTP requests. You see execution
+                duration, success/failure status, and any exceptions thrown
+                during the task. Tasks are listed in a dedicated dashboard with
+                filtering and sorting.
               </AccordionContent>
             </AccordionItem>
           </Accordion>

@@ -23,6 +23,11 @@ export function SiteFooter() {
                                     Session Replay
                                 </Link>
                             </li>
+                            <li>
+                                <Link href="/product/distributed-tracing" className="hover:text-zinc-900 transition-colors">
+                                    Distributed Tracing
+                                </Link>
+                            </li>
                         </ul>
                     </div>
                     <div>

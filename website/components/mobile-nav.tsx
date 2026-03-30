@@ -66,6 +66,13 @@ export function MobileNav() {
                         >
                             Session Replay
                         </Link>
+                        <Link
+                            href="/product/distributed-tracing"
+                            className="text-lg font-medium text-zinc-600 hover:text-zinc-900 transition-colors pl-2"
+                            onClick={() => setIsOpen(false)}
+                        >
+                            Distributed Tracing
+                        </Link>
                         <div className="border-t border-zinc-100"></div>
                         <Link
                             href="/cloud"
