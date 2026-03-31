@@ -60,51 +60,25 @@ export default function DistributedTracingPage() {
       {/* Feature 1: Cross-Service Visibility */}
       <section className="py-24 bg-white border-y border-zinc-100">
         <div className="container mx-auto px-4 max-w-5xl">
-          <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
-            <div className="flex-1 space-y-6">
-              <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center">
-                <GitBranch className="w-6 h-6 text-teal-600" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">
-                Trace requests across every service
-              </h2>
-              <p className="text-zinc-600 text-lg leading-relaxed">
-                Follow a single user action from the browser click through your
-                API gateway, backend services, and database calls. Traceway
-                propagates trace context so every span connects into one
-                distributed trace.
-              </p>
-              <ul className="space-y-3 pt-2">
-                <li className="flex items-center gap-3 text-zinc-700">
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
-                  W3C Trace Context propagation
-                </li>
-                <li className="flex items-center gap-3 text-zinc-700">
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
-                  Cross-service span waterfall
-                </li>
-                <li className="flex items-center gap-3 text-zinc-700">
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
-                  Automatic context linking
-                </li>
-                <li className="flex items-center gap-3 text-zinc-700">
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
-                  Works with any OpenTelemetry-instrumented service
-                </li>
-              </ul>
-            </div>
-            <div className="flex-1 w-full relative">
-              <div className="absolute inset-0 bg-gradient-to-tr from-teal-100/50 to-transparent rounded-3xl transform rotate-3 scale-105 -z-10"></div>
-              <div className="relative rounded-xl overflow-hidden border border-zinc-200 bg-white">
-                <Image
-                  src="/images/screenshot-3.png"
-                  alt="Distributed Trace Waterfall"
-                  width={800}
-                  height={600}
-                  className="w-full h-auto"
-                />
-              </div>
-            </div>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 tracking-tight mb-4">
+              Trace requests across every service
+            </h2>
+            <p className="text-zinc-600 text-lg leading-relaxed max-w-2xl mx-auto">
+              Follow a single user action from the browser click through your
+              API gateway, backend services, and database calls. Traceway
+              propagates trace context so every span connects into one
+              distributed trace.
+            </p>
+          </div>
+          <div className="relative rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50 shadow-sm">
+            <Image
+              src="/images/distributed-trace.png"
+              alt="Distributed Trace across services"
+              width={1200}
+              height={400}
+              className="w-full h-auto"
+            />
           </div>
         </div>
       </section>
