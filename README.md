@@ -26,6 +26,7 @@ It can run as a standalone server with ClickHouse + PostgreSQL, or **embedded di
 - **Embedded Mode** — Run Traceway inside your Go process with SQLite, zero external dependencies
 - **Issue Tracking** — Automatic exception grouping with normalized stack trace hashing and contextual tags
 - **Endpoint Performance** — P50, P95, P99 latency percentiles with Apdex scoring and impact scores
+- **AI Observability** — Monitor LLM costs, token usage, latency, and conversations across AI providers. Works with [OpenRouter](https://docs.tracewayapp.com/client/openrouter) and any OpenTelemetry-compatible AI gateway
 - **Distributed Tracing** — Full request traces with span breakdowns
 - **Alerts & Notifications** — Configurable rules (error rate, latency thresholds, Apdex drops, metric thresholds) with email, Slack, GitHub, and webhook delivery
 - **Session Replay** — Replay user sessions to see exactly what happened before an error
