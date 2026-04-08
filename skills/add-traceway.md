@@ -26,13 +26,7 @@ Follow `skills/add-traceway-to-hono-project.md` in this repo. Uses `@hono/otel` 
 - Full docs: `docs/pages/client/nestjs/index.mdx`
 
 ### Next.js (Node.js)
-- Install: `@opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http @opentelemetry/api`
-- Create `instrumentation.ts` at project root (next to `next.config.js`). Must export `async function register()` with a `process.env.NEXT_RUNTIME === "nodejs"` guard. Use dynamic `import()` inside — no top-level OTel imports.
-- Create `lib/with-route.ts` — a `withRoute(route, handler)` wrapper that sets `http.route` on the active span and catches exceptions. Next.js doesn't use Express, so `http.route` is never set automatically.
-- Wrap every API route handler with `withRoute("/api/path/[param]", handler)`
-- No `--import` or `--require` flag needed — Next.js calls `register()` automatically
-- For Next.js 13.4-14.x: add `experimental: { instrumentationHook: true }` to `next.config.js`
-- Full docs: `docs/pages/client/nextjs/index.mdx`
+Follow `skills/add-traceway-to-nextjs-project.md` in this repo. Requires a `withRoute()` wrapper for every API route handler (Next.js doesn't use Express, so `http.route` is never set automatically). Supports Prisma auto-instrumentation for database queries.
 
 ### Gin / Chi / Fiber / FastHTTP / stdlib (Go)
 - Install the framework-specific middleware: `go get go.tracewayapp.com/tracewaygin` (or `tracewaychi`, `tracewayfiber`, `tracewayfasthttp`, `tracewayhttp`)

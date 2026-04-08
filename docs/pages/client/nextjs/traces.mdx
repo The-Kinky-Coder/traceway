@@ -1,6 +1,6 @@
 # Traces
 
-Auto-instrumentation handles HTTP request tracing automatically. This page covers manual span creation and custom instrumentation patterns for Next.js.
+Prisma queries and outgoing `fetch()` calls are auto-instrumented. This page covers manual span creation for operations that aren't covered by auto-instrumentation.
 
 ## Manual Spans
 
@@ -69,6 +69,28 @@ export default async function UsersPage() {
 
 Server Component spans appear as **Spans** in Traceway, nested under the parent HTTP request trace.
 
+## Exception Recording
+
+The `withRoute` helper automatically records thrown errors. For cases where you catch an error and want to record it without re-throwing:
+
+```typescript
+import { trace, SpanStatusCode } from "@opentelemetry/api";
+
+app.get("/api/checkout", async (c) => {
+  const span = trace.getActiveSpan();
+  try {
+    await processPayment();
+  } catch (error) {
+    if (span) {
+      span.recordException(error as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+    }
+    return Response.json({ error: "Payment failed" }, { status: 500 });
+  }
+  return Response.json({ status: "ok" });
+});
+```
+
 ## Nested Spans
 
 Spans created inside an active span are automatically linked as children:
@@ -93,29 +115,18 @@ async function processPayment(orderId: string) {
 }
 ```
 
-## Recording Exceptions
+## What Gets Auto-Instrumented vs Manual
 
-Use `recordException` on the active span to capture errors as Issues in Traceway:
-
-```typescript
-import { trace, SpanStatusCode } from "@opentelemetry/api";
-
-function riskyOperation() {
-  const span = trace.getActiveSpan();
-
-  try {
-    doSomethingDangerous();
-  } catch (error) {
-    if (span) {
-      span.recordException(error as Error);
-      span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
-    }
-    throw error;
-  }
-}
-```
-
-The `recordException` call adds an event with `exception.type`, `exception.message`, and `exception.stacktrace` attributes. Traceway normalizes and hashes the stack trace to group identical errors into a single Issue.
+| Operation | Auto-Instrumented? | Notes |
+|-----------|-------------------|-------|
+| HTTP requests (incoming) | Partial | `withRoute` sets `http.route` + catches exceptions |
+| Outgoing `fetch()` calls | Yes | Via `instrumentation-undici` |
+| Prisma queries | Yes | Via `@prisma/instrumentation` |
+| Database queries (`pg`, `mysql2`, `mongodb`) | Yes | CJS packages — patched by `require-in-the-middle` |
+| Cache (`redis`, `ioredis`) | Yes | CJS packages — patched automatically |
+| SQLite (`better-sqlite3`) | No | Use manual spans |
+| Server Component rendering | No | Use `tracer.startActiveSpan()` |
+| Custom business logic | No | Use `tracer.startActiveSpan()` |
 
 ## Next Steps
 

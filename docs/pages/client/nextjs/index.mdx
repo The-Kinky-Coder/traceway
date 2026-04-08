@@ -12,6 +12,12 @@ npm install @opentelemetry/sdk-node \
   @opentelemetry/api
 ```
 
+If you use Prisma, also install its OTel instrumentation for automatic query tracing:
+
+```bash
+npm install @prisma/instrumentation
+```
+
 ## Setup
 
 Create an `instrumentation.ts` file in the root of your project (next to `next.config.js`). Next.js loads this file automatically during server startup — no `--require` flag needed.
@@ -32,8 +38,10 @@ export async function register() {
     const { getNodeAutoInstrumentations } = await import(
       "@opentelemetry/auto-instrumentations-node"
     );
-
     const { Resource } = await import("@opentelemetry/resources");
+    const { PrismaInstrumentation } = await import(
+      "@prisma/instrumentation"
+    );
 
     const sdk = new NodeSDK({
       resource: new Resource({
@@ -54,13 +62,18 @@ export async function register() {
         exportIntervalMillis: 30_000,
       }),
 
-      instrumentations: [getNodeAutoInstrumentations()],
+      instrumentations: [
+        getNodeAutoInstrumentations(),
+        new PrismaInstrumentation(),
+      ],
     });
 
     sdk.start();
   }
 }
 ```
+
+> If you don't use Prisma, remove the `PrismaInstrumentation` import and the `new PrismaInstrumentation()` line.
 
 The `process.env.NEXT_RUNTIME === "nodejs"` guard is required — Next.js runs `instrumentation.ts` in both the Node.js and Edge runtimes, but the OTel Node SDK only works in Node.js. Dynamic `import()` prevents OTel packages from being bundled into the Edge runtime.
 
@@ -123,9 +136,10 @@ Wrap every API route handler with `withRoute`, passing the route pattern that ma
 ```typescript
 // app/api/users/route.ts
 import { withRoute } from "@/lib/with-route";
+import { prisma } from "@/lib/db";
 
 export const GET = withRoute("/api/users", async () => {
-  const users = await db.users.findAll();
+  const users = await prisma.user.findMany();
   return Response.json(users);
 });
 ```
@@ -133,25 +147,69 @@ export const GET = withRoute("/api/users", async () => {
 ```typescript
 // app/api/users/[id]/route.ts
 import { withRoute } from "@/lib/with-route";
+import { prisma } from "@/lib/db";
 
 export const GET = withRoute("/api/users/[id]", async (req, { params }) => {
   const { id } = await params;
-  return Response.json({ id, name: "John" });
+  const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
+  if (!user) {
+    return Response.json({ error: "User not found" }, { status: 404 });
+  }
+  return Response.json(user);
 });
 ```
 
 ## What Gets Captured
 
-With the setup above and the `withRoute` helper, OTel captures:
+With the setup above, OTel captures the following automatically:
 
 | Layer | What's Captured |
 |-------|-----------------|
 | HTTP server | Incoming requests with method, status code, duration |
 | `withRoute` helper | `http.route` for endpoint grouping + exception recording |
-| Database (pg, mysql2, Prisma, etc.) | Query spans |
-| HTTP client (fetch) | Outgoing HTTP request spans |
+| Prisma (`@prisma/instrumentation`) | Query spans with operation name, model, duration |
+| Database (`pg`, `mysql2`, `mongodb`) | Query spans (CJS packages — auto-instrumented) |
+| Cache (`redis`, `ioredis`) | Cache operation spans (auto-instrumented) |
+| Outgoing `fetch()` | Outgoing HTTP request spans (auto via `instrumentation-undici`) |
 
 Root SERVER spans become **Endpoints** in Traceway (e.g., `GET /api/users/[id]`), child spans become **Spans**, and exception events become **Issues**.
+
+### Prisma Auto-Instrumentation
+
+With `@prisma/instrumentation` registered in the SDK, every Prisma query automatically creates child spans — no manual wrapping needed:
+
+```typescript
+// Just use Prisma normally — spans are created automatically
+const users = await prisma.user.findMany();
+const user = await prisma.user.create({ data: { name, email } });
+```
+
+The resulting trace in Traceway:
+
+```
+GET /api/users              ← Endpoint
+  └─ prisma:client:query    ← Span (findMany on User)
+```
+
+### Outgoing fetch() Auto-Instrumentation
+
+Outgoing `fetch()` calls are automatically traced by `@opentelemetry/instrumentation-undici`:
+
+```typescript
+export const GET = withRoute("/api/external", async () => {
+  // This fetch automatically creates a child span
+  const res = await fetch("https://api.example.com/data");
+  const data = await res.json();
+  return Response.json(data);
+});
+```
+
+The resulting trace in Traceway:
+
+```
+GET /api/external           ← Endpoint
+  └─ GET                    ← Span (https://api.example.com/data)
+```
 
 ## Environment Variable Alternative
 

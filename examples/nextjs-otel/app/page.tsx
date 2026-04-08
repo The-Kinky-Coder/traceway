@@ -14,10 +14,13 @@ export default function Home() {
           <a href="/nextjs/api/users/2">GET /nextjs/api/users/2</a>
         </li>
         <li>
-          <a href="/nextjs/api/slow">GET /nextjs/api/slow</a>
+          <a href="/nextjs/api/slow">GET /nextjs/api/slow</a> (manual span)
         </li>
         <li>
-          <a href="/nextjs/api/test-error">GET /nextjs/api/test-error</a>
+          <a href="/nextjs/api/external">GET /nextjs/api/external</a> (auto fetch span)
+        </li>
+        <li>
+          <a href="/nextjs/api/test-error">GET /nextjs/api/test-error</a> (exception)
         </li>
       </ul>
     </div>

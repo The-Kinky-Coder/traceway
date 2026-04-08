@@ -13,11 +13,13 @@ export async function register() {
     const { getNodeAutoInstrumentations } = await import(
       "@opentelemetry/auto-instrumentations-node"
     );
+    const { Resource } = await import("@opentelemetry/resources");
+    const { PrismaInstrumentation } = await import(
+      "@prisma/instrumentation"
+    );
 
     const tracewayUrl = process.env.TRACEWAY_URL || "http://localhost:8082";
     const tracewayToken = process.env.TRACEWAY_TOKEN || "backend-dev-token";
-
-    const { Resource } = await import("@opentelemetry/resources");
 
     const sdk = new NodeSDK({
       resource: new Resource({
@@ -38,7 +40,10 @@ export async function register() {
         exportIntervalMillis: 10_000,
       }),
 
-      instrumentations: [getNodeAutoInstrumentations()],
+      instrumentations: [
+        getNodeAutoInstrumentations(),
+        new PrismaInstrumentation(),
+      ],
     });
 
     sdk.start();
