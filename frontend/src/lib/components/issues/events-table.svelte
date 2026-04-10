@@ -8,6 +8,7 @@
     import type { ExceptionOccurrence } from '$lib/types/exceptions';
     import { formatDateTime } from '$lib/utils/formatters';
     import { getTimezone } from '$lib/state/timezone.svelte';
+    import { projectsState, isFrontendFramework } from '$lib/state/projects.svelte';
 
     interface Props {
         occurrences: ExceptionOccurrence[];
@@ -30,6 +31,11 @@
     }: Props = $props();
 
     const tz = $derived(timezone ?? getTimezone());
+    const isFrontend = $derived(
+        projectsState.currentProject?.framework
+            ? isFrontendFramework(projectsState.currentProject.framework)
+            : false
+    );
 
     function getRowUrl(occurrence: ExceptionOccurrence): string {
         return `/issues/${exceptionHash}/${occurrence.id}`;
@@ -55,6 +61,7 @@
                             label="Recorded At"
                             tooltip="When this occurrence was recorded"
                         />
+                        {#if !isFrontend}
                         <TracewayTableHeader
                             label="Server"
                             tooltip="Server instance where error occurred"
@@ -63,12 +70,13 @@
                             label="Trace"
                             tooltip="Trace ID if this occurred during a request"
                         />
+                        {/if}
                     </Table.Row>
                 </Table.Header>
                 {/if}
                 <Table.Body>
                     {#if occurrences.length === 0}
-                        <TableEmptyState colspan={3} message="No occurrences found." />
+                        <TableEmptyState colspan={isFrontend ? 1 : 3} message="No occurrences found." />
                     {:else}
                         {#each occurrences as occurrence}
                             <Table.Row
@@ -81,16 +89,18 @@
                                         <span class="ml-2 text-xs text-muted-foreground">(current)</span>
                                     {/if}
                                 </Table.Cell>
+                                {#if !isFrontend}
                                 <Table.Cell class="font-mono text-sm text-muted-foreground">
                                     {occurrence.serverName || '-'}
                                 </Table.Cell>
                                 <Table.Cell class="font-mono text-sm">
                                     {occurrence.traceId || '-'}
                                 </Table.Cell>
+                                {/if}
                             </Table.Row>
                         {/each}
                         {#if hasMore && showViewAll}
-                            <ViewAllTableRow colspan={3} href={`/issues/${exceptionHash}/events`} label={`View all ${total} events`} />
+                            <ViewAllTableRow colspan={isFrontend ? 1 : 3} href={`/issues/${exceptionHash}/events`} label={`View all ${total} events`} />
                         {/if}
                     {/if}
                 </Table.Body>

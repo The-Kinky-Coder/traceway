@@ -19,42 +19,55 @@ export type ParsedStackTrace = {
 };
 
 function extractPackageName(location: string): string {
-	const match = location.match(/node_modules\/([^/]+)/);
-	return match ? match[1] : 'library';
+	const nodeMatch = location.match(/node_modules\/([^/]+)/);
+	if (nodeMatch) return nodeMatch[1];
+
+	const dartMatch = location.match(/^(package:[^/]+|dart:[^/]+)/);
+	if (dartMatch) return dartMatch[1];
+
+	return 'library';
 }
 
 export function parseStackTrace(raw: string): ParsedStackTrace {
 	const lines = raw.split('\n');
 	const frames: StackFrame[] = [];
 	let firstFrameIndex = -1;
+	let firstFuncNameIndex = -1;
 
-	const locationPattern = /^\s{4}.+:\d+:\d+$/;
+	const locationPattern = /^\s*.+:\d+:\d+$/;
 
 	for (let i = 0; i < lines.length; i++) {
 		if (locationPattern.test(lines[i])) {
-			if (firstFrameIndex === -1) firstFrameIndex = i;
-
 			const location = lines[i].trim();
 			let functionName: string | null = null;
 
-			if (i > 0) {
-				const prevLine = lines[i - 1].trim();
-				if (prevLine.endsWith('()')) {
+			for (let j = i - 1; j >= 0; j--) {
+				const prevLine = lines[j].trim();
+				if (prevLine === '') continue;
+				if (!locationPattern.test(lines[j])) {
 					functionName = prevLine;
+					if (firstFrameIndex === -1) firstFuncNameIndex = j;
 				}
+				break;
 			}
+
+			if (firstFrameIndex === -1) firstFrameIndex = i;
 
 			frames.push({
 				functionName,
 				location,
-				isLibrary: location.includes('node_modules')
+				isLibrary: location.includes('node_modules') ||
+					/^(package:flutter\/|dart:|package:collection\/)/.test(location)
 			});
 		}
 	}
 
+	const errorEndIndex = firstFrameIndex === -1
+		? lines.length
+		: firstFuncNameIndex !== -1 ? firstFuncNameIndex : firstFrameIndex;
 	const errorMessage = firstFrameIndex === -1
 		? raw.trim()
-		: lines.slice(0, firstFrameIndex - (frames[0]?.functionName ? 1 : 0)).join('\n').trim();
+		: lines.slice(0, errorEndIndex).join('\n').trim();
 
 	const groups: FrameGroup[] = [];
 

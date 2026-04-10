@@ -13,7 +13,7 @@
     import * as Select from "$lib/components/ui/select";
     import { LoadingCircle } from "$lib/components/ui/loading-circle";
     import { ErrorDisplay } from "$lib/components/ui/error-display";
-    import { projectsState } from '$lib/state/projects.svelte';
+    import { projectsState, isFrontendFramework } from '$lib/state/projects.svelte';
     import { TracewayTableHeader } from "$lib/components/ui/traceway-table-header";
     import { TableEmptyState } from "$lib/components/ui/table-empty-state";
     import { PaginationFooter } from "$lib/components/ui/pagination-footer";
@@ -23,6 +23,11 @@
 	import { resolve } from '$app/paths';
 
     const timezone = $derived(getTimezone());
+    const isFrontend = $derived(
+        projectsState.currentProject?.framework
+            ? isFrontendFramework(projectsState.currentProject.framework)
+            : false
+    );
 
     type ExceptionGroup = {
         exceptionHash: string;
@@ -200,6 +205,7 @@
                             label="Recorded At"
                             tooltip="When this occurrence was recorded"
                         />
+                        {#if !isFrontend}
                         <TracewayTableHeader
                             label="Server"
                             tooltip="Server instance where error occurred"
@@ -208,20 +214,21 @@
                             label="Trace"
                             tooltip="Trace ID if this occurred during a request"
                         />
+                        {/if}
                     </Table.Row>
                 </Table.Header>
                 {/if}
                 <Table.Body>
                     {#if loading}
                         <Table.Row>
-                            <Table.Cell colspan={3} class="h-48">
+                            <Table.Cell colspan={isFrontend ? 1 : 3} class="h-48">
                                 <div class="flex items-center justify-center">
                                     <LoadingCircle size="lg" />
                                 </div>
                             </Table.Cell>
                         </Table.Row>
                     {:else if occurrences.length === 0}
-                        <TableEmptyState colspan={3} message="No events found." />
+                        <TableEmptyState colspan={isFrontend ? 1 : 3} message="No events found." />
                     {:else}
                         {#each occurrences as occurrence}
                             <Table.Row
@@ -229,12 +236,14 @@
                                 onclick={createRowClickHandler(`/issues/${page.params.exceptionHash}/${occurrence.id}`, 'preset', 'from', 'to')}
                             >
                                 <Table.Cell>{formatDateTime(occurrence.recordedAt, { timezone })}</Table.Cell>
+                                {#if !isFrontend}
                                 <Table.Cell class="font-mono text-sm text-muted-foreground">
                                     {occurrence.serverName || '-'}
                                 </Table.Cell>
                                 <Table.Cell class="font-mono text-sm">
                                     {occurrence.traceId || '-'}
                                 </Table.Cell>
+                                {/if}
                             </Table.Row>
                         {/each}
                     {/if}
