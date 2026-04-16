@@ -55,7 +55,14 @@ TracewayClient.instance?.captureMessage('User completed onboarding');
 | `debug` | `bool` | `false` | Prints debug info to the console |
 | `version` | `String` | `''` | App version string |
 | `debounceMs` | `int` | `1500` | Milliseconds before sending batched events |
-| `capturePixelRatio` | `double` | `0.5` | Screenshot resolution scale |
+| `capturePixelRatio` | `double` | `0.75` | Screenshot resolution scale |
+| `maxBufferFrames` | `int` | `150` | Max frames in recording buffer (~10s at 15fps) |
+| `fps` | `int` | `15` | Frames per second for screen capture (1–59) |
+| `retryDelayMs` | `int` | `10000` | Retry delay in ms on failed uploads |
+| `maxPendingExceptions` | `int` | `5` | Max exceptions held in memory before oldest is dropped |
+| `persistToDisk` | `bool` | `true` | Persist pending exceptions to disk so they survive app restarts |
+| `maxLocalFiles` | `int` | `5` | Max exception files stored on disk |
+| `localFileMaxAgeHours` | `int` | `12` | Hours after which unsynced local files are deleted |
 
 ```dart
 Traceway.run(
@@ -112,8 +119,40 @@ When `screenCapture` is set to `true`:
 
 - The SDK wraps the app in a `RepaintBoundary` and captures frames at approximately 15 fps.
 - On exception, the last ~10 seconds are encoded to MP4 and sent alongside the error report.
-- Touch and click positions are rendered as red circles on the captured frames. These overlays are invisible to the user during normal use.
+- Touch and click positions are rendered as blue circles on the captured frames. These overlays are invisible to the user during normal use.
 - Recordings appear in the Traceway dashboard alongside the stack trace, giving you full visual context for every error.
+
+## Privacy Masking
+
+Use `TracewayPrivacyMask` to hide sensitive content in screen recordings. Masked regions are applied to the recorded frames only — the user sees no visual change in the live app.
+
+**Blur (pixelation):**
+
+```dart
+TracewayPrivacyMask(
+  child: Text('4242 4242 4242 4242'),
+)
+```
+
+The default mode is `TracewayMaskMode.blur()` which pixelates the region. You can control the intensity with the `ratio` parameter (0.0 = light, 1.0 = heavy):
+
+```dart
+TracewayPrivacyMask(
+  mode: TracewayMaskMode.blur(ratio: 0.5),
+  child: CreditCardWidget(),
+)
+```
+
+**Blank (solid fill):**
+
+```dart
+TracewayPrivacyMask(
+  mode: TracewayMaskMode.blank(color: Color(0xFF000000)),
+  child: SensitiveDataWidget(),
+)
+```
+
+This replaces the region with a solid color (black by default) in the recording.
 
 ## What Gets Captured Automatically
 
