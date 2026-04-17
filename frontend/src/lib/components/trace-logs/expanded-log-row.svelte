@@ -44,11 +44,11 @@
 </script>
 
 <!--
-	The container <tr>/<td> carry a fixed muted background with `!` so Table.Row's
+	The container <tr>/<td> carry a fixed background with `!` so Table.Row's
 	built-in hover:[&>td]:bg-muted/50 can't repaint the cell on mouseover.
 -->
-<Table.Row class="!bg-muted/30">
-	<Table.Cell {colspan} class="!bg-muted/30 px-4 py-3">
+<Table.Row class="!bg-background">
+	<Table.Cell {colspan} class="!bg-background px-4 py-3">
 		<div class="space-y-3">
 			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
 				<div class="sm:col-span-2 md:col-span-3">
