@@ -6,7 +6,7 @@
 		<script>
 			// Default to dark; honor stored preference if the user has set one.
 			try {
-				var stored = localStorage.getItem('theme');
+				var stored = localStorage.getItem('traceway_theme');
 				if (stored === 'light') {
 					document.documentElement.classList.remove('dark');
 					document.documentElement.style.colorScheme = 'light';

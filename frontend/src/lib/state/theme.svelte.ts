@@ -4,7 +4,7 @@ export const themeState = $state({
 
 export function initTheme() {
     if (typeof document !== 'undefined') {
-        const stored = localStorage.getItem('theme');
+        const stored = localStorage.getItem('traceway_theme');
 
         if (stored === 'dark' || stored === 'light') {
             themeState.isDark = stored === 'dark';
@@ -33,5 +33,5 @@ export function toggleTheme() {
     themeState.isDark = !themeState.isDark;
     document.documentElement.classList.toggle('dark', themeState.isDark);
     document.documentElement.style.colorScheme = themeState.isDark ? 'dark' : 'light';
-    localStorage.setItem('theme', themeState.isDark ? 'dark' : 'light');
+    localStorage.setItem('traceway_theme', themeState.isDark ? 'dark' : 'light');
 }
