@@ -7,6 +7,7 @@ import { FeatureRow } from "@/components/feature-row";
 import { FaqList } from "@/components/faq-list";
 import { FinalCTA } from "@/components/final-cta";
 import { AuroraBackground } from "@/components/aurora-background";
+import { ImpactScoreVisual } from "@/components/impact-score-visual";
 
 export default function PerformancePage() {
   return (
@@ -33,6 +34,22 @@ export default function PerformancePage() {
               Try Traceway Cloud
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Impact Score — scoring and ranking logic */}
+      <section className="wrap py-20">
+        <SectionHead
+          eyebrow="Impact Score"
+          title={
+            <>
+              One score. Five signals. <em>Zero guesswork.</em>
+            </>
+          }
+          description="The Impact Score combines five service-level indicators into one automatic priority for every endpoint. It takes the max across all five — if any single signal is bad, the endpoint surfaces immediately."
+        />
+        <div className="mt-10 max-w-4xl mx-auto">
+          <ImpactScoreVisual />
         </div>
       </section>
 
@@ -181,6 +198,33 @@ export default function PerformancePage() {
           <div className="mt-4">
             <FaqList
               items={[
+                {
+                  q: "What is the Impact Score?",
+                  a: (
+                    <>
+                      <p>
+                        The Impact Score is Traceway&apos;s automatic prioritization
+                        system. It combines five service-level indicators — an
+                        inverted apdex variant, error rate floor, P99 latency
+                        floor, client error floor, and volume error floor — into
+                        a single 0-100 score for every endpoint.
+                      </p>
+                      <p>
+                        It takes the max across all five, so if any single
+                        signal is degraded that endpoint surfaces immediately.
+                        You can adjust the slow endpoint threshold per endpoint
+                        to tune the apdex calculation for routes with different
+                        latency profiles.
+                      </p>
+                      <p>
+                        For incident management, notification rules fire when
+                        the Impact Score or error rate crosses a threshold, and
+                        route alerts to Slack, GitHub Issues, email, or custom
+                        webhooks.
+                      </p>
+                    </>
+                  ),
+                },
                 {
                   q: "What percentiles does Traceway track?",
                   a: "Traceway calculates P50 (median), P95, and P99 latency percentiles for every endpoint. This gives you a clear picture of both typical and worst-case response times for your application.",

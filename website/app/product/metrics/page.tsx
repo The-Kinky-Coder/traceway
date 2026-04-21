@@ -1,23 +1,12 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  BarChart3,
-  Cpu,
-  LayoutDashboard,
-  Network,
-  Package,
-  Radio,
-  Ruler,
-} from "lucide-react";
+import { ArrowRight, BarChart3 } from "lucide-react";
 
 import { Chip } from "@/components/chip";
 import { SectionHead } from "@/components/section-head";
 import { FeatureRow } from "@/components/feature-row";
-import { BentoGrid, BentoCell } from "@/components/bento-grid";
 import { FaqList } from "@/components/faq-list";
 import { FinalCTA } from "@/components/final-cta";
 import { AuroraBackground } from "@/components/aurora-background";
-import { Terminal } from "@/components/terminal";
 
 export default function MetricsPage() {
   return (
@@ -33,9 +22,9 @@ export default function MetricsPage() {
             Measure what matters, <em>without the bill shock.</em>
           </h1>
           <p className="hero-sub">
-            Custom application metrics, automatic server metrics, flexible
-            widget dashboards, and OpenTelemetry ingestion — all included in
-            every plan. No per-metric billing, no surprise overages.
+            Application metrics via OpenTelemetry, automatic server metrics,
+            and flexible widget dashboards — all included, with no per-metric
+            billing and no surprise overages.
           </p>
           <div className="hero-cta-row">
             <Link href="https://docs.tracewayapp.com" className="btn btn-accent">
@@ -54,36 +43,18 @@ export default function MetricsPage() {
           eyebrow="Application metrics"
           title={
             <>
-              Custom metrics with <em>one function call</em>
+              Application metrics <em>via OpenTelemetry</em>
             </>
           }
-          description="Counter, Gauge, and Histogram types with dimensional tags. Emit metrics from anywhere in your code — the SDK batches, compresses, and ships them to Traceway without blocking your hot path."
+          description="Emit Counter, Gauge, and Histogram metrics through the OpenTelemetry SDK you already have. Traceway ingests OTLP natively, preserves units and dimensional tags, and bills nothing per metric."
           bullets={[
-            "Counter / Gauge / Histogram types",
-            "Dimensional tags for facet breakdowns",
-            "Single-call SDK API",
-            "Zero impact on request latency",
+            "OTLP/HTTP and OTLP/gRPC ingestion",
+            "Counter / Gauge / Histogram preserved natively",
+            "Dimensional tags become facet filters",
+            "No per-metric billing",
           ]}
-          image={{ src: "/images/screenshot-4.png", alt: "Custom metrics dashboard" }}
+          image={{ src: "/images/screenshot-4.png", alt: "Application metrics dashboard" }}
         />
-      </section>
-
-      {/* Code example */}
-      <section className="wrap py-16">
-        <div className="max-w-3xl mx-auto">
-          <Terminal
-            title="capture custom metrics"
-            lines={[
-              { type: "mute", content: "// Track business metrics alongside system metrics" },
-              { type: "cmd", content: 'traceway.Metric.Counter("signups", 1, tags)' },
-              { type: "cmd", content: 'traceway.Metric.Gauge("queue.depth", 42, tags)' },
-              { type: "cmd", content: 'traceway.Metric.Histogram("checkout.ms", 312, tags)' },
-              { type: "mute", content: "// Tags can be plan, region, tenant — anything you want to slice by" },
-              { type: "ok", content: '✓ metrics indexed by type, tag, and time — query anywhere' },
-            ]}
-            showCursor
-          />
-        </div>
       </section>
 
       {/* Server metrics */}
@@ -124,66 +95,6 @@ export default function MetricsPage() {
         />
       </section>
 
-      {/* Ingest bento */}
-      <section className="wrap py-10">
-        <SectionHead
-          eyebrow="Ingest"
-          title={
-            <>
-              OpenTelemetry metrics — <em>first-class</em>
-            </>
-          }
-          description="Bring metrics from anywhere. Traceway speaks OTLP natively and registers every metric with type, unit, and cardinality."
-        />
-        <BentoGrid>
-          <BentoCell
-            size="wide"
-            icon={Network}
-            title="OTLP/HTTP + OTLP/gRPC"
-            iconColor="var(--a2)"
-          >
-            <p>
-              Point any OpenTelemetry SDK at Traceway. Sum, Gauge, and
-              Histogram metric types are all understood natively — no
-              translation layer, no metric-name mangling.
-            </p>
-          </BentoCell>
-          <BentoCell
-            size="med"
-            icon={Package}
-            title="Metric Registry"
-            iconColor="var(--a1)"
-          >
-            <p>
-              Every metric shows up with its type, unit, description,
-              last-seen timestamp, and cardinality. Spot runaway tag explosions
-              before they hit your bill.
-            </p>
-          </BentoCell>
-          <BentoCell
-            size="med"
-            icon={Radio}
-            title="Prometheus scrape"
-            iconColor="var(--ok)"
-          >
-            <p>
-              Traceway can pull <code>/metrics</code> endpoints on a
-              configurable interval. Your existing Prometheus exporters work
-              unchanged.
-            </p>
-          </BentoCell>
-          <BentoCell size="sm" icon={Cpu} title="StatsD compat">
-            <p>UDP ingestion for legacy StatsD metric streams.</p>
-          </BentoCell>
-          <BentoCell size="sm" icon={Ruler} title="Custom units">
-            <p>Bytes, seconds, percentages — declare once, render consistently.</p>
-          </BentoCell>
-          <BentoCell size="sm" icon={LayoutDashboard} title="Always in context">
-            <p>Metrics link back to the traces, logs, and issues around them.</p>
-          </BentoCell>
-        </BentoGrid>
-      </section>
-
       <FinalCTA
         title={
           <>
@@ -208,18 +119,20 @@ export default function MetricsPage() {
             <FaqList
               items={[
                 {
-                  q: "How do I emit a custom metric?",
+                  q: "How do I emit an application metric?",
                   a: (
                     <>
                       <p>
-                        With the Traceway SDK, a single call:{" "}
-                        <code>traceway.Metric.Counter(&quot;signups&quot;, 1, tags)</code>
-                        {" "}— that&apos;s it. Full docs cover Gauge and Histogram.
+                        Point any OpenTelemetry SDK at{" "}
+                        <code>/api/otel/v1/metrics</code> — OTLP/HTTP and
+                        OTLP/gRPC are both supported natively. Counter, Gauge,
+                        and Histogram metric types are ingested as-is, and
+                        dimensional tags become facet filters in the dashboard.
                       </p>
                       <p>
-                        Or send metrics via OpenTelemetry at{" "}
-                        <code>/api/otel/v1/metrics</code> — OTLP/HTTP and
-                        OTLP/gRPC are both supported natively.
+                        If you&apos;re instrumenting from scratch, the
+                        OpenTelemetry metrics SDK is the recommended path for
+                        every language we support.
                       </p>
                     </>
                   ),
@@ -235,10 +148,6 @@ export default function MetricsPage() {
                 {
                   q: "Can I query metrics by tag or dimension?",
                   a: "Yes. Every tag becomes a facet you can filter on; widget groups let you build per-dimension chart panels. For example, a `plan` tag on a signups metric lets you chart signups broken down by plan, region, or tenant.",
-                },
-                {
-                  q: "Does Traceway support Prometheus?",
-                  a: "Yes. Traceway can scrape /metrics endpoints on a configurable interval. Your existing Prometheus exporters work unchanged — just point Traceway at their address and choose a scrape interval.",
                 },
               ]}
             />

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "./",
   },
-  title: "Traceway — Logs, Traces, Metrics, Session Replay, Stack Traces",
+  title: "Traceway — Logs, Traces, Metrics, Session Replay, Exceptions",
   description:
     "Traceway is open-source observability for modern backends. Logs, traces, metrics, session replay, and stack traces — correlated by one trace ID. Self-host free or run on Traceway Cloud.",
   icons: {

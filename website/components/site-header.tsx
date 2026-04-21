@@ -51,8 +51,8 @@ const PILLARS: NavItem[] = [
     icon: Video,
   },
   {
-    title: "Stack Traces",
-    description: "Grouped and ranked by automatic Impact Score.",
+    title: "Exceptions / Stack Traces",
+    description: "Grouped, normalized, and paired with the replay that caused them.",
     href: "/product/stack-traces",
     icon: Bug,
   },

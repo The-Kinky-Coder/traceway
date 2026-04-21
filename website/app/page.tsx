@@ -91,8 +91,8 @@ export default function Home() {
                 />
                 <PillarCard
                   icon={Bug}
-                  title="Stack traces"
-                  description="Grouped, ranked, Impact Score."
+                  title="Exceptions / Stack Traces"
+                  description="Grouped, normalized, paired with replay."
                   href="/product/stack-traces"
                   color="a3"
                 />

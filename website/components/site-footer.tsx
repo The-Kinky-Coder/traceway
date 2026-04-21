@@ -15,7 +15,7 @@ const COLUMNS: Column[] = [
       { label: "Traces", href: "/product/traces" },
       { label: "Metrics", href: "/product/metrics" },
       { label: "Session Replay", href: "/product/session-replay" },
-      { label: "Stack Traces", href: "/product/stack-traces" },
+      { label: "Exceptions / Stack Traces", href: "/product/stack-traces" },
     ],
   },
   {
