@@ -196,7 +196,7 @@
     text-wrap: balance;
   }
   h1 {
-    font-size: clamp(40px, 5.6vw, 76px);
+    font-size: clamp(40px, 5.6vw, 75px);
     line-height: 1.02;
     letter-spacing: -0.035em;
     font-weight: 700;

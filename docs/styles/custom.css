@@ -1,4 +1,297 @@
-/* Navbar - align nav items to the left (right after the logo) */
+/* =========================================================================
+   Traceway Docs — dark-only design tokens ported from website design-guidelines
+   (styles.css). Override Nextra's default theme colors and apply mono-native
+   typography.
+   ========================================================================= */
+
+:root,
+:is(html[class~="dark"]) {
+  /* Ink & surfaces */
+  --ink-0: #05070c;
+  --ink-1: #0a0d14;
+  --ink-2: #0f131c;
+  --ink-3: #151a24;
+  --ink-4: #1d2430;
+  --ink-5: #283041;
+  --hair: rgba(255, 255, 255, 0.06);
+  --hair-2: rgba(255, 255, 255, 0.10);
+
+  /* Text */
+  --fg-0: #f4f6fb;
+  --fg-1: #c9d0dd;
+  --fg-2: #8a93a6;
+  --fg-3: #5a6374;
+
+  /* Accent — Electric Indigo */
+  --a1: #7c5cff;
+  --a2: #00d4ff;
+  --a3: #ff4d8d;
+  --a4: #ffd166;
+  --ok: #22e0a8;
+  --crit: #ff5a5f;
+
+  /* Nextra theme overrides */
+  --nextra-primary-hue: 253deg;
+  --nextra-primary-saturation: 100%;
+  --nextra-bg: 5, 7, 12; /* ink-0 triplet */
+
+  /* Radius + layout */
+  --radius: 6px;
+  --radius-lg: 10px;
+  --max: 1240px;
+
+  /* Font aliases mirroring website var names
+     (--font-display / --font-mono are populated by next/font in _app.jsx) */
+  --f-display: var(--font-display, "JetBrains Mono"), "IBM Plex Mono", ui-monospace, monospace;
+  --f-body:    var(--font-mono,    "IBM Plex Mono"), "JetBrains Mono", ui-monospace, monospace;
+  --f-mono:    var(--font-mono,    "IBM Plex Mono"), "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* =========================================================================
+   Base / typography
+   ========================================================================= */
+
+html,
+body {
+  background: var(--ink-0) !important;
+  color: var(--fg-1);
+  color-scheme: dark;
+  font-family: var(--font-mono, "IBM Plex Mono"), "JetBrains Mono", ui-monospace,
+    monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(1200px 700px at 85% -10%, color-mix(in oklab, var(--a1) 12%, transparent), transparent 60%),
+    radial-gradient(900px 600px at -10% 20%, color-mix(in oklab, var(--a2) 8%, transparent), transparent 60%),
+    var(--ink-0) !important;
+}
+
+main h1,
+main h2,
+main h3,
+main h4,
+main h5,
+main h6,
+.nextra-content h1,
+.nextra-content h2,
+.nextra-content h3,
+.nextra-content h4,
+.nextra-content h5,
+.nextra-content h6 {
+  font-family: var(--font-display, "JetBrains Mono"), "IBM Plex Mono",
+    ui-monospace, monospace !important;
+  color: var(--fg-0) !important;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+main h1,
+.nextra-content h1 {
+  font-size: clamp(40px, 5.6vw, 75px) !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.035em !important;
+  font-weight: 700 !important;
+}
+
+main h2,
+.nextra-content h2 {
+  font-size: clamp(28px, 3.2vw, 46px) !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.025em !important;
+  font-weight: 700 !important;
+}
+
+main h3,
+.nextra-content h3 {
+  font-size: clamp(20px, 1.7vw, 26px) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.015em !important;
+  font-weight: 600 !important;
+}
+
+main h1 em,
+main h2 em,
+.nextra-content h1 em,
+.nextra-content h2 em {
+  font-style: normal;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--a2), var(--a1) 60%, var(--a3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+main p,
+.nextra-content p {
+  color: var(--fg-1);
+}
+
+main a,
+.nextra-content a {
+  color: var(--a2) !important;
+  text-decoration-color: color-mix(in oklab, var(--a2) 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+main a:hover,
+.nextra-content a:hover {
+  color: var(--a1) !important;
+}
+
+/* =========================================================================
+   Navbar + sidebar + content containers
+   ========================================================================= */
+
+.nextra-nav-container {
+  background: color-mix(in oklab, var(--ink-0) 75%, transparent) !important;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--hair);
+}
+
+.nextra-nav-container-blur {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+.nextra-sidebar-container {
+  background: transparent !important;
+  border-right: 1px solid var(--hair);
+}
+
+/* Sidebar links */
+.nextra-sidebar-container a,
+.nextra-sidebar-container button {
+  color: var(--fg-2) !important;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.nextra-sidebar-container a:hover,
+.nextra-sidebar-container button:hover {
+  color: var(--fg-0) !important;
+  background: var(--ink-2) !important;
+}
+
+.nextra-sidebar-container .nx-text-primary-600,
+.nextra-sidebar-container a[aria-current="page"] {
+  color: var(--a2) !important;
+  background: color-mix(in oklab, var(--a1) 14%, transparent) !important;
+}
+
+/* Right TOC */
+nav.nextra-toc a {
+  color: var(--fg-3) !important;
+}
+nav.nextra-toc a:hover {
+  color: var(--fg-0) !important;
+}
+nav.nextra-toc .nx-text-primary-600 {
+  color: var(--a2) !important;
+}
+
+/* Footer */
+.nextra-footer,
+footer.nextra-footer {
+  background: transparent !important;
+  border-top: 1px solid var(--hair);
+  color: var(--fg-3);
+}
+
+/* =========================================================================
+   Code blocks + inline code
+   ========================================================================= */
+
+.nextra-content code,
+main code {
+  background: color-mix(in oklab, var(--a2) 10%, transparent);
+  color: var(--a2);
+  border: 1px solid color-mix(in oklab, var(--a2) 20%, transparent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.92em;
+}
+
+.nextra-code-block pre,
+pre.nextra-code {
+  background: linear-gradient(180deg, #080b12, #0d1220) !important;
+  border: 1px solid var(--hair-2);
+  border-radius: 10px;
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+}
+
+.nextra-code-block pre code,
+pre code {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  color: var(--fg-1);
+}
+
+/* =========================================================================
+   Tables, callouts, cards, bullet points
+   ========================================================================= */
+
+main table,
+.nextra-content table {
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+main th,
+.nextra-content th {
+  background: var(--ink-2) !important;
+  color: var(--fg-0) !important;
+  border-color: var(--hair) !important;
+}
+
+main td,
+.nextra-content td {
+  border-color: var(--hair) !important;
+  color: var(--fg-1) !important;
+}
+
+main blockquote,
+.nextra-content blockquote {
+  background: color-mix(in oklab, var(--a2) 8%, transparent);
+  border-left: 3px solid var(--a2);
+  color: var(--fg-1);
+}
+
+/* Nextra callouts */
+.nextra-callout {
+  border-radius: 10px !important;
+}
+
+/* Horizontal rule */
+main hr,
+.nextra-content hr {
+  border-color: var(--hair) !important;
+}
+
+/* =========================================================================
+   Search box
+   ========================================================================= */
+
+.nextra-search input {
+  background: color-mix(in oklab, var(--ink-2) 80%, transparent) !important;
+  border: 1px solid var(--hair-2) !important;
+  color: var(--fg-0) !important;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.nextra-search input:focus {
+  border-color: color-mix(in oklab, var(--a1) 60%, var(--hair-2)) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--a1) 15%, transparent);
+}
+
+/* =========================================================================
+   Navbar alignment (pre-existing rules, preserved)
+   ========================================================================= */
+
 .nextra-nav-container nav > a:first-child {
   margin-right: 20px !important;
 }
@@ -7,7 +300,6 @@
   margin-left: auto;
 }
 
-/* Mobile navbar - keep logo on the left */
 @media (max-width: 767px) {
   .nextra-nav-container nav {
     justify-content: flex-start !important;
@@ -18,7 +310,153 @@
   }
 }
 
-/* SDK Selector - injected into sidebar via separator */
+/* =========================================================================
+   Utility classes — opt-in, ported from website/design guidelines/styles.css.
+   Available to MDX authors via className; no !important except where a more
+   specific existing rule (e.g., `main a { color: ... !important }`) would win.
+   ========================================================================= */
+
+.wrap {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--a2);
+  font-weight: 500;
+  display: inline-block;
+}
+.eyebrow::before {
+  content: "// ";
+  opacity: 0.5;
+}
+
+.muted { color: var(--fg-2); }
+.dim   { color: var(--fg-3); }
+
+.hair-rule {
+  height: 1px;
+  background: var(--hair);
+  width: 100%;
+}
+
+.surface-card {
+  background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+}
+
+.gridbg { position: relative; }
+.gridbg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 50%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 50%, transparent 100%);
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--fg-1);
+  background: var(--ink-3);
+  border: 1px solid var(--hair);
+}
+.chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--a2);
+  box-shadow: 0 0 8px var(--a2);
+  flex-shrink: 0;
+}
+.chip.ok   .dot { background: var(--ok);   box-shadow: 0 0 8px var(--ok); }
+.chip.crit .dot { background: var(--crit); box-shadow: 0 0 8px var(--crit); }
+
+/* Buttons — !important on color values to beat `main a { color: var(--a2) !important }` */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  transition: transform 0.12s ease, background 0.2s, border-color 0.2s,
+    color 0.2s, filter 0.2s, box-shadow 0.2s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--fg-0);
+  color: var(--ink-0) !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.btn-primary:hover {
+  background: #fff;
+  color: var(--ink-0) !important;
+}
+
+.btn-accent {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--a1) 100%, white 12%),
+    var(--a1)
+  );
+  color: #0a0612 !important;
+  box-shadow: 0 10px 30px -12px color-mix(in oklab, var(--a1) 80%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--a1) 40%, transparent);
+}
+.btn-accent:hover {
+  filter: brightness(1.06);
+  color: #0a0612 !important;
+}
+
+.btn-ghost {
+  border-color: var(--hair-2);
+  color: var(--fg-0) !important;
+  background: transparent;
+}
+.btn-ghost:hover {
+  background: var(--ink-3);
+  border-color: var(--hair-2);
+  color: var(--fg-0) !important;
+}
+
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+/* =========================================================================
+   SDK Selector — injected into sidebar via separator
+   ========================================================================= */
+
 li:has(> .sdk-selector) {
   padding: 0 !important;
   margin: 0 0 8px 0 !important;
@@ -44,16 +482,18 @@ li:has(> .sdk-selector) > span:first-child {
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid #e5e7eb;
+  font-family: var(--font-display), ui-monospace, monospace;
+  border: 1px solid var(--hair-2);
   border-radius: 8px;
-  background: #fff;
-  color: #111827;
+  background: var(--ink-2);
+  color: var(--fg-0);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .sdk-selector-trigger:hover {
-  border-color: #9ca3af;
+  border-color: color-mix(in oklab, var(--a1) 50%, var(--hair-2));
+  background: var(--ink-3);
 }
 
 .sdk-selector-dropdown {
@@ -61,10 +501,11 @@ li:has(> .sdk-selector) > span:first-child {
   top: calc(100% + 4px);
   left: 8px;
   right: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
+  border: 1px solid var(--hair-2);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
   z-index: 100;
 }
 
@@ -72,12 +513,13 @@ li:has(> .sdk-selector) > span:first-child {
   width: 100%;
   padding: 8px 12px;
   font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
   border: none;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--hair);
   outline: none;
   box-shadow: none;
   background: transparent;
-  color: #111827;
+  color: var(--fg-0);
 }
 
 .sdk-selector-search:focus {
@@ -86,7 +528,7 @@ li:has(> .sdk-selector) > span:first-child {
 }
 
 .sdk-selector-search::placeholder {
-  color: #9ca3af;
+  color: var(--fg-3);
 }
 
 .sdk-selector-list {
@@ -107,31 +549,38 @@ li:has(> .sdk-selector) > span:first-child {
   width: 100%;
   padding: 6px 8px;
   font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
   text-align: left;
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: #374151;
+  color: var(--fg-1);
   cursor: pointer;
+  transition: background 0.12s, color 0.12s;
 }
 
 .sdk-selector-option:hover {
-  background: #f3f4f6;
+  background: var(--ink-3);
+  color: var(--fg-0);
 }
 
 .sdk-selector-option.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: color-mix(in oklab, var(--a1) 18%, transparent);
+  color: var(--a2);
   font-weight: 500;
 }
 
 .sdk-selector-empty {
   padding: 8px 12px;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--fg-3);
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
-/* Framework Picker */
+/* =========================================================================
+   Framework Picker (card grid on /client)
+   ========================================================================= */
+
 .framework-picker {
   margin-top: 24px;
 }
@@ -140,12 +589,14 @@ li:has(> .sdk-selector) > span:first-child {
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 8px 0;
-  color: #111827;
+  color: var(--fg-0);
+  font-family: var(--font-display), ui-monospace, monospace;
+  letter-spacing: -0.01em;
 }
 
 .framework-picker-subheading {
   font-size: 15px;
-  color: #6b7280;
+  color: var(--fg-2);
   margin: 0 0 24px 0;
 }
 
@@ -167,20 +618,20 @@ li:has(> .sdk-selector) > span:first-child {
   align-items: flex-start;
   gap: 8px;
   padding: 24px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--hair);
   border-radius: 12px;
-  background: #fff;
+  background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   text-align: left;
   font-family: inherit;
 }
 
 .framework-picker-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: color-mix(in oklab, var(--a1) 50%, var(--hair-2));
+  box-shadow: 0 20px 40px -20px color-mix(in oklab, var(--a1) 30%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--a1) 20%, transparent);
+  transform: translateY(-2px);
 }
 
 .framework-picker-top {
@@ -197,26 +648,20 @@ li:has(> .sdk-selector) > span:first-child {
   border-radius: 4px;
   letter-spacing: 0.02em;
   line-height: 1.5;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  text-transform: uppercase;
 }
 
 .badge-production {
-  background: #4ba0f2;
-  color: white;
+  background: color-mix(in oklab, var(--a1) 18%, transparent);
+  color: var(--a1);
+  border: 1px solid color-mix(in oklab, var(--a1) 40%, transparent);
 }
 
 .badge-new {
-  background: #15803d;
-  color: white;
-}
-
-:is(html[class~="dark"]) .badge-production {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93bbfd;
-}
-
-:is(html[class~="dark"]) .badge-new {
-  background: rgba(34, 197, 94, 0.15);
-  color: #86efac;
+  background: color-mix(in oklab, var(--ok) 18%, transparent);
+  color: var(--ok);
+  border: 1px solid color-mix(in oklab, var(--ok) 40%, transparent);
 }
 
 .framework-picker-icon {
@@ -228,42 +673,21 @@ li:has(> .sdk-selector) > span:first-child {
 .framework-picker-label {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--fg-0);
+  font-family: var(--font-display), ui-monospace, monospace;
+  letter-spacing: -0.01em;
 }
 
 .framework-picker-desc {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--fg-2);
   line-height: 1.5;
 }
 
-:is(html[class~="dark"]) .framework-picker-heading {
-  color: #e5e7eb;
-}
+/* =========================================================================
+   Deployment Cards (learn / self-host pages)
+   ========================================================================= */
 
-:is(html[class~="dark"]) .framework-picker-subheading {
-  color: #9ca3af;
-}
-
-:is(html[class~="dark"]) .framework-picker-card {
-  background: #1a1a2e;
-  border-color: #374151;
-}
-
-:is(html[class~="dark"]) .framework-picker-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
-
-:is(html[class~="dark"]) .framework-picker-label {
-  color: #e5e7eb;
-}
-
-:is(html[class~="dark"]) .framework-picker-desc {
-  color: #9ca3af;
-}
-
-/* Deployment Cards */
 .deployment-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -282,18 +706,17 @@ li:has(> .sdk-selector) > span:first-child {
   flex-direction: column;
   gap: 8px;
   padding: 24px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--hair);
   border-radius: 12px;
-  background: #fff;
-  text-decoration: none;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+  background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
+  text-decoration: none !important;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .deployment-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: color-mix(in oklab, var(--a1) 50%, var(--hair-2));
+  box-shadow: 0 20px 40px -20px color-mix(in oklab, var(--a1) 30%, transparent);
+  transform: translateY(-2px);
 }
 
 .deployment-card-top {
@@ -305,7 +728,9 @@ li:has(> .sdk-selector) > span:first-child {
 .deployment-card-title {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--fg-0);
+  font-family: var(--font-display), ui-monospace, monospace;
+  letter-spacing: -0.01em;
 }
 
 .deployment-card-badge {
@@ -313,94 +738,31 @@ li:has(> .sdk-selector) > span:first-child {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 4px;
-  background: #3b82f6;
-  color: white;
+  background: color-mix(in oklab, var(--a2) 18%, transparent);
+  color: var(--a2);
+  border: 1px solid color-mix(in oklab, var(--a2) 40%, transparent);
   letter-spacing: 0.02em;
   line-height: 1.5;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  text-transform: uppercase;
 }
 
 .deployment-card-subtitle {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--fg-1);
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
 .deployment-card-desc {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--fg-2);
   line-height: 1.5;
 }
 
-:is(html[class~="dark"]) .deployment-card {
-  background: #1a1a2e;
-  border-color: #374151;
-}
-
-:is(html[class~="dark"]) .deployment-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-}
-
-:is(html[class~="dark"]) .deployment-card-title {
-  color: #e5e7eb;
-}
-
-:is(html[class~="dark"]) .deployment-card-badge {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93bbfd;
-}
-
-:is(html[class~="dark"]) .deployment-card-subtitle {
-  color: #d1d5db;
-}
-
-:is(html[class~="dark"]) .deployment-card-desc {
-  color: #9ca3af;
-}
-
-/* Dark mode */
-:is(html[class~="dark"]) .sdk-selector-trigger {
-  background: #1a1a2e;
-  border-color: #374151;
-  color: #e5e7eb;
-}
-
-:is(html[class~="dark"]) .sdk-selector-trigger:hover {
-  border-color: #6b7280;
-}
-
-:is(html[class~="dark"]) .sdk-selector-dropdown {
-  background: #1a1a2e;
-  border-color: #374151;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-:is(html[class~="dark"]) .sdk-selector-search {
-  border-bottom-color: #374151;
-  color: #e5e7eb;
-}
-
-:is(html[class~="dark"]) .sdk-selector-search:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-:is(html[class~="dark"]) .sdk-selector-search::placeholder {
-  color: #6b7280;
-}
-
-:is(html[class~="dark"]) .sdk-selector-option {
-  color: #d1d5db;
-}
-
-:is(html[class~="dark"]) .sdk-selector-option:hover {
-  background: #374151;
-}
-
-:is(html[class~="dark"]) .sdk-selector-option.active {
-  background: #1e3a5f;
-  color: #60a5fa;
-}
+/* =========================================================================
+   Per-page layout tweaks (preserved from original)
+   ========================================================================= */
 
 /* Protocol page - hide sidebar placeholder to expand content */
 body[data-page="protocol"] .nx-mx-auto.nx-flex > div.nx-w-64.nx-shrink-0,
@@ -410,16 +772,12 @@ body[data-page^="protocol"] .nx-mx-auto.nx-flex > div.nx-w-64.nx-shrink-0 {
 
 /* Client index page - full width content on large screens */
 @media (min-width: 1280px) {
-  /* Hide left sidebar placeholder */
   body[data-page="client"] .nx-mx-auto.nx-flex > div.nx-w-64.nx-shrink-0 {
     display: none !important;
   }
-
-  /* Hide right TOC */
   body[data-page="client"] nav.nextra-toc {
     display: none !important;
   }
-
   body[data-page="client"] main.nx-max-w-6xl {
     max-width: none !important;
   }

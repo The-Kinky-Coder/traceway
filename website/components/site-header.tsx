@@ -14,7 +14,6 @@ import {
   Workflow,
   Activity,
   Smartphone,
-  ArrowUpRight,
 } from "lucide-react";
 import { MobileNav } from "@/components/mobile-nav";
 import { cn } from "@/lib/utils";
@@ -259,13 +258,6 @@ export function SiteHeader() {
             style={{ fontFamily: "var(--font-display)" }}
           >
             Sign in
-          </Link>
-          <Link
-            href="https://cloud.tracewayapp.com/register"
-            className="btn btn-accent btn-sm"
-          >
-            Try for free
-            <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 

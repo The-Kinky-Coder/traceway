@@ -20,12 +20,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
 	try {
 		const formData = await request.json<any>();
 
-		if (
-			!formData.subject ||
-			!formData.email ||
-			!formData.message ||
-			!formData.customerType
-		) {
+		if (!formData.email || !formData.firstName || !formData.lastName) {
 			return new Response(
 				JSON.stringify({ error: "Missing required fields" }),
 				{
@@ -35,6 +30,9 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
 			);
 		}
 
+		const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+		const companySize = formData.companySize || "Not provided";
+
 		const msg = {
 			personalizations: [
 				{
@@ -42,19 +40,17 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
 				},
 			],
 			from: { email: env.SENDGRID_FROM_EMAIL },
-			subject: `New Contact Request: ${formData.subject}`,
+			reply_to: { email: formData.email, name: fullName },
+			subject: `New signup from ${fullName} (${companySize})`,
 			content: [
 				{
 					type: "text/plain",
 					value: `
-New contact request from Traceway website:
+New signup from Traceway website:
 
-Subject: ${formData.subject}
+Name: ${fullName}
 Email: ${formData.email}
-Customer Type: ${formData.customerType}
-
-Message:
-${formData.message}
+Company size: ${companySize}
 					`.trim(),
 				},
 			],

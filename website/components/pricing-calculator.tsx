@@ -41,7 +41,9 @@ const TIERS = [
     name: "Enterprise+",
     limit: "Unlimited",
     price: "Contact Us",
-    description: "Dedicated SRE, shared Slack, tailored SLAs.",
+    description:
+      "Dedicated SRE, shared Slack, tailored SLAs. No data leaves your cloud.",
+    badge: "Managed self-hosting",
   },
 ];
 
@@ -83,13 +85,27 @@ export function PricingCalculator() {
               }}
             >
               <div
-                className="col-span-3 font-semibold flex items-center gap-2"
+                className="col-span-3 font-semibold flex flex-col gap-1.5"
                 style={{
                   color: tier.highlight ? "var(--a2)" : "var(--fg-0)",
                   fontFamily: "var(--font-display)",
                 }}
               >
-                {tier.name}
+                <span>{tier.name}</span>
+                {tier.badge ? (
+                  <span
+                    className="inline-flex items-center self-start gap-1 px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--ok)",
+                      background: "color-mix(in oklab, var(--ok) 12%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--ok) 35%, transparent)",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    {tier.badge}
+                  </span>
+                ) : null}
               </div>
               <div
                 className="col-span-3 text-sm"

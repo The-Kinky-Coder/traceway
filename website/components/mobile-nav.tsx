@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Github, Menu, ArrowUpRight } from "lucide-react";
+import { Github, Menu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Sheet,
@@ -103,14 +103,6 @@ export function MobileNav({
             className="p-6 flex flex-col gap-3"
             style={{ borderTop: "1px solid var(--hair)" }}
           >
-            <Link
-              href="https://cloud.tracewayapp.com/register"
-              onClick={() => setOpen(false)}
-              className="btn btn-accent w-full justify-center"
-            >
-              Try for free
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
             <Link
               href="https://cloud.tracewayapp.com/login"
               onClick={() => setOpen(false)}

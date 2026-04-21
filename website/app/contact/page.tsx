@@ -4,26 +4,6 @@ import { useState, FormEvent } from "react";
 import { ChevronDown } from "lucide-react";
 import { Eyebrow } from "@/components/eyebrow";
 
-const COUNTRIES = [
-  "United States",
-  "Canada",
-  "United Kingdom",
-  "Germany",
-  "France",
-  "Netherlands",
-  "Spain",
-  "Italy",
-  "Sweden",
-  "Poland",
-  "India",
-  "Australia",
-  "Japan",
-  "Singapore",
-  "Brazil",
-  "Mexico",
-  "Other",
-];
-
 const COMPANY_SIZES = [
   "Just me",
   "2 – 10",
@@ -33,32 +13,40 @@ const COMPANY_SIZES = [
   "500+",
 ];
 
-const CALENDLY_URL =
-  process.env.NEXT_PUBLIC_CALENDLY_URL ??
-  "https://calendly.com/tracewayapp/demo";
+const REGISTER_URL = "https://cloud.tracewayapp.com/register";
 
 export default function Contact() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [country, setCountry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
 
-    const params = new URLSearchParams();
-    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-    if (fullName) params.set("name", fullName);
-    if (email.trim()) params.set("email", email.trim());
-    if (country) params.set("a1", country);
-    if (companySize) params.set("a2", companySize);
+    const trimmed = email.trim();
+    const payload = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: trimmed,
+      companySize,
+    };
 
-    const url = `${CALENDLY_URL}${
-      params.toString() ? `?${params.toString()}` : ""
-    }`;
+    try {
+      await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // Don't block the user if the notification fails — they still get to sign up.
+    }
+
+    const url = trimmed
+      ? `${REGISTER_URL}?email=${encodeURIComponent(trimmed)}`
+      : REGISTER_URL;
     window.location.href = url;
   }
 
@@ -84,17 +72,17 @@ export default function Contact() {
       <section className="hero gridbg relative overflow-hidden pt-20 pb-24">
         <div className="wrap relative z-10 max-w-3xl mx-auto">
           <div className="text-center mb-10">
-            <Eyebrow>Book a demo</Eyebrow>
+            <Eyebrow>Get started</Eyebrow>
             <h1 className="mt-4">
               We&apos;d love to hear from you.{" "}
-              <em>Submit the form to pick a time.</em>
+              <em>Start your free account.</em>
             </h1>
             <p
               className="mt-5 text-[17px] max-w-[560px] mx-auto"
               style={{ color: "var(--fg-2)" }}
             >
-              Tell us a bit about you and your team. On submit we&apos;ll hand
-              you over to Calendly so you can grab a 30-minute slot.
+              Tell us a bit about you and your team. On submit we&apos;ll take
+              you to sign-up with your email pre-filled.
             </p>
           </div>
 
@@ -144,47 +132,8 @@ export default function Contact() {
               style={inputStyle}
             />
 
-            {/* Country */}
-            <div className="mt-8">
-              <label
-                htmlFor="country"
-                className="block text-[15px] font-medium"
-                style={labelStyle}
-              >
-                Which country is your company&apos;s headquarters based in?{" "}
-                <span style={{ color: "var(--crit)" }}>*</span>
-              </label>
-              <p className="mt-1 text-[13px]" style={helperStyle}>
-                This info will help us connect you to the right person.
-              </p>
-              <div className="mt-3 relative">
-                <select
-                  id="country"
-                  required
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  className="w-full appearance-none px-4 py-3.5 pr-10 rounded-md text-[15px] outline-none focus:border-[color:var(--a1)] transition-colors"
-                  style={inputStyle}
-                >
-                  <option value="" disabled>
-                    Select an option
-                  </option>
-                  {COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                  size={18}
-                  style={{ color: "var(--fg-3)" }}
-                />
-              </div>
-            </div>
-
             {/* Company size */}
-            <div className="mt-7">
+            <div className="mt-8">
               <label
                 htmlFor="company-size"
                 className="block text-[15px] font-medium"
@@ -239,7 +188,7 @@ export default function Contact() {
                 fontFamily: "var(--font-mono)",
               }}
             >
-              We&apos;ll redirect you to Calendly with your info pre-filled.
+              We&apos;ll take you to sign-up with your email pre-filled.
             </p>
           </form>
         </div>

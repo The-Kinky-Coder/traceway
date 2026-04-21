@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { useTheme } from "nextra-theme-docs";
 import SdkSelector from "./components/SdkSelector";
 import HiddenItem from "./components/HiddenItem";
 import { useSdk } from "./components/SdkContext";
@@ -31,16 +29,9 @@ const SDK_VISIBILITY = {
 export default {
   logoLink: "https://tracewayapp.com",
   logo: function Logo() {
-    const { resolvedTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
     return (
       <img
-        src={
-          mounted && resolvedTheme === "dark"
-            ? "/traceway-logo-white.png"
-            : "/traceway-logo.png"
-        }
+        src="/traceway-logo-white.png"
         alt="Traceway"
         style={{ height: "32px" }}
       />
@@ -68,12 +59,17 @@ export default {
         name="description"
         content="Traceway - Error tracking and monitoring platform"
       />
+      <meta name="theme-color" content="#05070c" />
+      <meta name="color-scheme" content="dark" />
     </>
   ),
-  primaryHue: 205,
-  darkMode: true,
+  // Electric Indigo (#7c5cff) ≈ hsl(253, 100%, 68%)
+  primaryHue: 253,
+  primarySaturation: 100,
+  darkMode: false,
   nextThemes: {
-    defaultTheme: "light",
+    defaultTheme: "dark",
+    forcedTheme: "dark",
   },
   sidebar: {
     defaultMenuCollapseLevel: 1,
