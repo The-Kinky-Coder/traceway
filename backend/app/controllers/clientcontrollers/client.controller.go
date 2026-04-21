@@ -200,7 +200,6 @@ func (e clientController) Report(c *gin.Context) {
 
 	insertMs := float64(time.Since(insertStart).Microseconds()) / 1000.0
 	totalSize := len(endpointsToInsert) + len(tasksToInsert) + len(spansToInsert) + len(exceptionStackTraceToInsert) + len(metricPointsToInsert)
-	monitoring.RecordIngestBatch(monitoring.SignalNative, "report", convertMs, insertMs, totalSize)
 
 	var exceptionHashes []string
 	for _, est := range exceptionStackTraceToInsert {
