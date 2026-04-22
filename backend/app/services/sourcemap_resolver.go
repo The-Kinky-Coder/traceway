@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -94,15 +93,6 @@ var jsControlFlowKeywords = map[string]bool{
 
 func ResolveStackTrace(ctx context.Context, projectId uuid.UUID, stackTrace string, sourceMaps []*models.SourceMap) string {
 	if len(sourceMaps) == 0 {
-		return stackTrace
-	}
-
-	// Source-map resolution is opt-in. A 20+ MB minified map parses into
-	// ~100-200 MB of in-memory state; under concurrent load this was pushing
-	// a 1 GB EC2 instance over the OOM line. Default: off. Flip on with
-	// TRACEWAY_SOURCEMAP_RESOLUTION=on in the environment when the host has
-	// enough RAM.
-	if os.Getenv("TRACEWAY_SOURCEMAP_RESOLUTION") != "on" {
 		return stackTrace
 	}
 
