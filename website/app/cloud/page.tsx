@@ -8,6 +8,7 @@ import { FinalCTA } from "@/components/final-cta";
 import { AuroraBackground } from "@/components/aurora-background";
 import { PricingCalculator } from "@/components/pricing-calculator";
 import { CostComparison } from "@/components/cost-comparison";
+import { getCalendlyUrl } from "@/lib/calendly";
 
 export default function CloudPage() {
   return (
@@ -87,7 +88,7 @@ export default function CloudPage() {
         }}
         secondary={{
           label: "Contact Sales",
-          href: "/contact",
+          href: getCalendlyUrl(),
         }}
       />
 

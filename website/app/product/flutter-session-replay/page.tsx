@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Smartphone, Github, ArrowRight } from "lucide-react";
+import {
+  Smartphone,
+  Github,
+  ShieldCheck,
+  Terminal as TerminalIcon,
+  MousePointer2,
+  BookOpen,
+} from "lucide-react";
 
 import { Chip } from "@/components/chip";
 import { Eyebrow } from "@/components/eyebrow";
@@ -8,61 +15,122 @@ import { StatsStrip } from "@/components/stats-strip";
 import { FinalCTA } from "@/components/final-cta";
 import { Terminal } from "@/components/terminal";
 import { AuroraBackground } from "@/components/aurora-background";
+import { FeatureRow } from "@/components/feature-row";
+import { BentoGrid, BentoCell } from "@/components/bento-grid";
+import { HeroEmailCTA } from "@/components/hero-email-cta";
+import { FlutterReplayShowcase } from "@/components/flutter-replay-showcase";
 
 export default function FlutterSessionReplayPage() {
   return (
     <main className="relative">
-      {/* 1. HERO */}
+      {/* 1. HERO — centered, matches home page layout */}
       <section className="hero hero-product gridbg relative">
         <AuroraBackground variant="hero" />
         <div className="wrap relative z-10">
-          <Chip>
-            <Smartphone className="h-3 w-3 inline mr-1" />
-            Flutter Session Replay
-          </Chip>
-          <h1 className="mt-6">
-            See the crash. <em>Not just the trace.</em>
-          </h1>
-          <p className="hero-sub">
-            Full-screen session recording, pinned to every stack trace. Four
-            lines of setup. Zero frame drops on your app.
-          </p>
-          <div className="hero-cta-row">
-            <Link
-              href="https://cloud.tracewayapp.com/register?framework=flutter"
-              className="btn btn-accent"
-            >
-              Start free
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="https://github.com/tracewayapp/traceway-flutter"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-ghost"
-            >
-              <Github className="h-4 w-4" />
-              View on GitHub
-            </Link>
-          </div>
-
-          {/* Free-tier chip — the page's sharpest offer, front-loaded */}
-          <div className="mt-5">
-            <Chip variant="ok">
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                10,000 recordings / month — free, forever
-              </span>
+          <div className="text-center max-w-3xl mx-auto flex flex-col items-center">
+            <Chip>
+              <Smartphone className="h-3 w-3 inline mr-1" />
+              Flutter Session Replay
             </Chip>
+            <h1 className="mt-6">
+              See the crash.
+              <br />
+              <em>Not just the Stack Trace.</em>
+            </h1>
+            <p className="hero-sub">
+              Full-screen session recording, pinned to every stack trace. Four
+              lines of setup. Zero frame drops on your app.
+            </p>
+            <div className="mt-10 w-full">
+              <HeroEmailCTA />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 2. THE 4 LINES */}
+      {/* 1a. Showcase — stack trace paired with phone replay */}
+      <FlutterReplayShowcase />
+
+      {/* 1b. Free-tier positioning section */}
+      <section className="wrap py-16">
+        <div className="max-w-3xl">
+          <SectionHead
+            eyebrow="Free tier"
+            title={
+              <>
+                Same crash reporting. <em>Full replay. Free forever.</em>
+              </>
+            }
+            description={
+              <>
+                Same error grouping, same impact ranking, same alerts you&rsquo;d
+                expect from{" "}
+                <span style={{ fontWeight: 900, color: "#7f5cfc" }}>Sentry</span>{" "}
+                — with the full replay included on the free tier. No per-replay
+                billing.
+              </>
+            }
+          />
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href="/cloud"
+              className="inline-flex"
+              aria-label="See pricing"
+            >
+              <Chip variant="ok">
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  10,000 replays / month — free, forever
+                </span>
+              </Chip>
+            </Link>
+            <span
+              className="text-[12px]"
+              style={{
+                color: "var(--fg-3)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              1 replay = 1 crash clip, up to 10sec, retained 30 days.{" "}
+              <Link
+                href="/cloud"
+                className="underline decoration-dotted underline-offset-4 hover:text-[color:var(--a2)]"
+              >
+                See pricing →
+              </Link>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. SEE IT — product screenshot, the single biggest missing piece */}
+      <section className="wrap pt-10">
+        <FeatureRow
+          eyebrow="The actual player"
+          title={
+            <>
+              Press play on <em>the moment it broke.</em>
+            </>
+          }
+          description="Every exception in the Traceway dashboard carries its replay. Open the stack trace, press play, and watch the last seconds of your user's session leading up to the crash — synced to the timeline."
+          bullets={[
+            "Scrub through the full session timeline",
+            "Replay ID linked from every stack trace",
+            "Tap, route, network, and console overlays",
+            "Share a single URL with your team",
+          ]}
+          image={{
+            src: "/images/session-replay-viewer.png",
+            alt: "Traceway session replay viewer with stack trace",
+          }}
+        />
+      </section>
+
+      {/* 3. THE 4 LINES — masking on by default */}
       <section className="wrap py-20">
         <div className="grid gap-12 md:grid-cols-[1fr_1.1fr] items-center">
           <div>
@@ -72,8 +140,8 @@ export default function FlutterSessionReplayPage() {
             </h2>
             <p className="muted mt-4 max-w-[460px]">
               Recording starts on the first frame. Every exception carries the
-              replay ID automatically — open any stack trace in the Traceway
-              dashboard, press play.
+              replay ID automatically. Sensitive widgets are masked by default
+              — wrap anything extra in <code>TracewayMask</code>.
             </p>
             <p
               className="mt-4 text-[13px]"
@@ -94,7 +162,11 @@ export default function FlutterSessionReplayPage() {
                 content:
                   "  connectionString: 'token@cloud.tracewayapp.com/api/report',",
               },
-              { type: "tx", content: "  options: TracewayOptions(screenCapture: true)," },
+              {
+                type: "tx",
+                content:
+                  "  options: TracewayOptions(replay: ReplayOptions.maskAll),",
+              },
               { type: "cmd", content: "  child: MyApp());" },
             ]}
             showCursor
@@ -102,7 +174,44 @@ export default function FlutterSessionReplayPage() {
         </div>
       </section>
 
-      {/* 3. BENCHMARKS */}
+      {/* 4. WHAT'S IN A REPLAY */}
+      <section className="wrap py-10">
+        <SectionHead
+          eyebrow="What you actually see"
+          title={
+            <>
+              A video is <em>the start.</em> The context is the rest.
+            </>
+          }
+          description="Every replay carries the surrounding signal — so you don't just watch what happened, you see why."
+        />
+        <BentoGrid>
+          <BentoCell
+            size="med"
+            icon={MousePointer2}
+            title="Taps & gestures"
+            iconColor="var(--a2)"
+          >
+            <p>
+              Every tap, scroll, and gesture for the last 60 seconds — synced
+              frame-for-frame with the recording.
+            </p>
+          </BentoCell>
+          <BentoCell
+            size="med"
+            icon={TerminalIcon}
+            title="Console & exceptions"
+            iconColor="var(--warn)"
+          >
+            <p>
+              <code>print</code> output, caught <code>FlutterError</code>s, and
+              the full symbolicated stack trace — all stitched to the timeline.
+            </p>
+          </BentoCell>
+        </BentoGrid>
+      </section>
+
+      {/* 6. BENCHMARKS */}
       <section className="wrap py-20">
         <SectionHead
           eyebrow="Measured on real hardware"
@@ -111,33 +220,108 @@ export default function FlutterSessionReplayPage() {
               No frame drops. <em>No battery spike.</em>
             </>
           }
-          description="Benchmarked on Pixel 5, Pixel 6, and Pixel 8 via Firebase Test Lab. Full harness open source — run it yourself on your own device tier."
+          description="Benchmarked on Pixel 5, Pixel 6, and Pixel 8 via Firebase Test Lab. Full harness open source — run it yourself on your own device tier. Tail latency numbers included because p50 is where bugs hide."
         />
         <StatsStrip
           stats={[
-            { num: "<em>0%</em>", label: "Frame-time regression at p50" },
+            { num: "<em>0%</em>", label: "Frame-time regression — p50, p95, p99" },
             { num: "<em>5–12</em>MB", label: "Steady-state RAM footprint" },
-            { num: "<em>15</em> FPS", label: "Default capture rate" },
+            { num: "<em>15</em> FPS", label: "Default capture rate (tunable)" },
             { num: "<em>~250</em>KB", label: "per 10-second recording" },
           ]}
         />
       </section>
 
-      {/* 4. FINAL CTA */}
+      {/* 7. TRUST ROW */}
+      <section className="wrap pb-10">
+        <div
+          className="rounded-2xl px-6 py-8 md:px-10 md:py-10"
+          style={{
+            background: "linear-gradient(180deg, var(--ink-3), var(--ink-2))",
+            border: "1px solid var(--hair-2)",
+          }}
+        >
+          <div className="grid gap-8 md:grid-cols-[1.2fr_1fr] items-center">
+            <div>
+              <Eyebrow>Built in the open</Eyebrow>
+              <h3
+                className="mt-3 text-[22px] leading-tight"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Read the SDK. Run the benchmarks.{" "}
+                <em style={{ color: "var(--a2)" }}>Self-host the server.</em>
+              </h3>
+              <p
+                className="mt-3 text-[14px] max-w-[520px]"
+                style={{ color: "var(--fg-2)" }}
+              >
+                Every part of Traceway is open source — the Flutter SDK, the Go
+                backend, the dashboard. Nothing about your crash data is a
+                black box.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-3 text-[13px]">
+              <Link
+                href="https://github.com/tracewayapp/traceway-flutter"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 hover:text-[color:var(--a2)]"
+                style={{ color: "var(--fg-1)", fontFamily: "var(--font-mono)" }}
+              >
+                <Github className="h-3.5 w-3.5" />
+                traceway-flutter →
+              </Link>
+              <Link
+                href="https://github.com/tracewayapp/traceway"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 hover:text-[color:var(--a2)]"
+                style={{ color: "var(--fg-1)", fontFamily: "var(--font-mono)" }}
+              >
+                <Github className="h-3.5 w-3.5" />
+                traceway (server) →
+              </Link>
+              <Link
+                href="https://docs.tracewayapp.com/client/flutter"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 hover:text-[color:var(--a2)]"
+                style={{ color: "var(--fg-1)", fontFamily: "var(--font-mono)" }}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Documentation →
+              </Link>
+              <Link
+                href="/privacy-policy"
+                className="inline-flex items-center gap-1.5 hover:text-[color:var(--a2)]"
+                style={{ color: "var(--fg-1)", fontFamily: "var(--font-mono)" }}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Privacy & DPA →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. FINAL CTA */}
       <FinalCTA
         title={
           <>
             Ship it <em>before your next release.</em>
           </>
         }
-        description="10,000 recordings every month. Free. Forever. No card required."
+        description="10,000 replays every month. Free. Forever. No card required. One crash clip = one replay, retained 30 days."
         primary={{
           label: "Create your project",
           href: "https://cloud.tracewayapp.com/register?framework=flutter",
         }}
         secondary={{
-          label: "View on GitHub",
-          href: "https://github.com/tracewayapp/traceway-flutter",
+          label: "Read the docs",
+          href: "https://docs.tracewayapp.com/client/flutter",
           external: true,
         }}
       />

@@ -1331,3 +1331,23 @@
     padding: 0 20px;
   }
 }
+
+/* ── Flutter replay showcase — strip rrweb-player's default chrome ──────── */
+.flutter-replay-mount .rr-player {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  float: none !important;
+}
+.flutter-replay-mount .rr-player__frame {
+  background: transparent !important;
+  margin: 0 !important;
+}
+.flutter-replay-mount .replayer-wrapper {
+  border-color: transparent !important;
+  margin: 0 !important;
+}
+/* Tuck the native controller out of sight even if a build ever forces it */
+.flutter-replay-mount .rr-controller {
+  display: none !important;
+}

@@ -106,9 +106,11 @@ export default function SessionReplayPage() {
             iconColor="var(--ok)"
           >
             <p>
-              Sensitive inputs are masked by default. Passwords, credit cards,
-              and personal data are never recorded. You see the interaction
-              flow, not the private content. Fully compliant by default.
+              Passwords and any element marked{" "}
+              <code>data-sensitive</code> are masked by default. Need stricter
+              control? Drop <code>class=&quot;rr-mask&quot;</code> on any
+              element to blank its text, or <code>rr-block</code> to hide it
+              entirely. No SDK configuration needed.
             </p>
           </BentoCell>
         </BentoGrid>
@@ -148,7 +150,26 @@ export default function SessionReplayPage() {
                 },
                 {
                   q: "What about user privacy?",
-                  a: "Sensitive inputs are masked by default. Password fields, credit card inputs, and any element with data-sensitive or aria-masked attributes are never captured. You can also configure custom mask rules by CSS selector.",
+                  a: (
+                    <>
+                      <p>
+                        Sensitive inputs are masked by default. Password fields, any{" "}
+                        <code>data-sensitive</code> element, and anything with{" "}
+                        <code>aria-masked</code> is never captured.
+                      </p>
+                      <p>
+                        For element-level control, Traceway honors rrweb&apos;s standard class
+                        hooks:{" "}
+                        <code>class=&quot;rr-mask&quot;</code> blocks all text inside the
+                        element (including children),{" "}
+                        <code>class=&quot;rr-block&quot;</code> hides the element entirely
+                        behind a neutral placeholder, and{" "}
+                        <code>class=&quot;rr-ignore&quot;</code> records input interactions
+                        without capturing the typed characters. No SDK configuration needed —
+                        drop the class on the element.
+                      </p>
+                    </>
+                  ),
                 },
               ]}
             />

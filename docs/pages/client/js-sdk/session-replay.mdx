@@ -36,6 +36,53 @@ init("your-token@https://traceway.example.com/api/report", {
 | `sessionRecording` | `boolean` | `true` | Enable or disable session recording |
 | `sessionRecordingSegmentDuration` | `number` | `10000` | Duration of each recording segment in milliseconds |
 
+## Privacy & Masking
+
+Because Session Replay runs on [rrweb](https://github.com/rrweb-io/rrweb) under the hood, you can drop rrweb's standard class hooks onto any element in your app to keep sensitive content out of recordings. No SDK configuration needed — these classes are honored automatically.
+
+### `rr-mask` — block all text in an element
+
+Add `class="rr-mask"` to any element whose **text content** should never be recorded. The element is still captured (layout, clicks, and scrolls all work in the replay), but every character of text — including the text of child elements — is replaced with asterisks.
+
+```html
+<!-- Name visible in the app, hidden in replays -->
+<span class="rr-mask">{user.fullName}</span>
+
+<!-- The entire row's text is masked -->
+<tr class="rr-mask">
+  <td>{invoice.number}</td>
+  <td>{invoice.amount}</td>
+</tr>
+```
+
+Use this for anything you treat as PII or regulated data: names, emails, customer IDs, dollar amounts, addresses, health info, chat content, support tickets.
+
+### `rr-block` — hide the element entirely
+
+Add `class="rr-block"` when you don't want the element visible at all in the replay. It's replaced by a neutral gray placeholder with the same dimensions. Good for avatars, user-uploaded images, or custom widgets that shouldn't be reconstructed.
+
+```html
+<img class="rr-block" src={user.avatarUrl} />
+```
+
+### `rr-ignore` — don't record input values
+
+Add `class="rr-ignore"` on form inputs when you want interaction events (focus, blur, click) captured but **not the characters the user typed**.
+
+```html
+<input class="rr-ignore" type="text" name="search" />
+```
+
+### What's masked by default
+
+You don't need to add any classes to get the basics — these are always masked:
+
+- `<input type="password">` — value is never captured
+- Elements with the `data-sensitive` attribute
+- Elements with the `aria-masked` attribute
+
+Reach for the `rr-*` classes whenever the sensitive content isn't in a form field, or when you need stricter masking than the defaults.
+
 ## Segment Rotation
 
 Recordings are split into segments to limit memory usage. Every 10 seconds (by default), the current segment is finalized and a new one begins with a fresh DOM snapshot.

@@ -2,14 +2,16 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
+import { getCalendlyUrl } from "@/lib/calendly";
 
 export function HeroEmailCTA({
-  bookDemoHref = "/contact",
+  bookDemoHref,
   placeholder = "Email Address",
 }: {
   bookDemoHref?: string;
   placeholder?: string;
 }) {
+  const demoHref = bookDemoHref ?? getCalendlyUrl();
   const [email, setEmail] = useState("");
 
   function handleSubmit(e: FormEvent) {
@@ -58,7 +60,7 @@ export function HeroEmailCTA({
       >
         Start for free or{" "}
         <Link
-          href={bookDemoHref}
+          href={demoHref}
           className="underline underline-offset-4 hover:text-[color:var(--fg-0)] transition-colors"
           style={{ color: "var(--fg-0)" }}
         >

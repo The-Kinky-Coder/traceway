@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { ChevronDown } from "lucide-react";
 import { Eyebrow } from "@/components/eyebrow";
+import { getCalendlyUrl, hasCalendly } from "@/lib/calendly";
 
 const COMPANY_SIZES = [
   "Just me",
@@ -44,9 +45,18 @@ export default function Contact() {
       // Don't block the user if the notification fails — they still get to sign up.
     }
 
-    const url = trimmed
-      ? `${REGISTER_URL}?email=${encodeURIComponent(trimmed)}`
-      : REGISTER_URL;
+    // If NEXT_PUBLIC_CALENDLY_URL is set, send the user to Calendly with
+    // their name + email pre-filled so they can book a 30-minute call.
+    // Otherwise fall back to the cloud register page with email pre-filled.
+    let url: string;
+    if (hasCalendly) {
+      const fullName = `${payload.firstName} ${payload.lastName}`.trim();
+      url = getCalendlyUrl({ email: trimmed || undefined, name: fullName || undefined });
+    } else {
+      url = trimmed
+        ? `${REGISTER_URL}?email=${encodeURIComponent(trimmed)}`
+        : REGISTER_URL;
+    }
     window.location.href = url;
   }
 

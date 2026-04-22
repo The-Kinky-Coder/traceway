@@ -20,6 +20,7 @@ import { Terminal } from "@/components/terminal";
 import { StatsStrip } from "@/components/stats-strip";
 import { TwoTrack } from "@/components/two-track";
 import { HeroEmailCTA } from "@/components/hero-email-cta";
+import { getCalendlyUrl } from "@/lib/calendly";
 
 export default function Home() {
   return (
@@ -415,7 +416,7 @@ export default function Home() {
         }}
         secondary={{
           label: "Book a demo",
-          href: "/contact",
+          href: getCalendlyUrl(),
         }}
       />
     </main>
