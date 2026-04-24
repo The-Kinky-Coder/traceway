@@ -89,7 +89,8 @@
 		const messages: ChatMessage[] = [];
 
 		// Extract input messages — could be {messages: [...]} or just [...]
-		const inputMessages = inputParsed?.messages ?? (Array.isArray(inputParsed) ? inputParsed : null);
+		const inputMessages =
+			inputParsed?.messages ?? (Array.isArray(inputParsed) ? inputParsed : null);
 		if (!Array.isArray(inputMessages)) return null;
 
 		for (const msg of inputMessages) {
@@ -145,12 +146,18 @@
 
 	function getRoleLabel(role: string): string {
 		switch (role) {
-			case 'system': return 'System';
-			case 'user': return 'User';
-			case 'assistant': return 'Assistant';
-			case 'tool': return 'Tool';
-			case 'function': return 'Function';
-			default: return role;
+			case 'system':
+				return 'System';
+			case 'user':
+				return 'User';
+			case 'assistant':
+				return 'Assistant';
+			case 'tool':
+				return 'Tool';
+			case 'function':
+				return 'Function';
+			default:
+				return role;
 		}
 	}
 
@@ -199,7 +206,9 @@
 		title={decodeURIComponent(data.traceName)}
 		subtitle={`Trace ID: ${data.traceId}`}
 		onBack={createSmartBackHandler({
-			fallbackPath: resolve('/ai-traces/[traceName]', { traceName: encodeURIComponent(data.traceName) })
+			fallbackPath: resolve('/ai-traces/[traceName]', {
+				traceName: encodeURIComponent(data.traceName)
+			})
 		})}
 	/>
 
@@ -213,7 +222,9 @@
 			title="AI Trace Not Found"
 			description="The AI trace you're looking for doesn't exist or may have expired."
 			onBack={createSmartBackHandler({
-				fallbackPath: resolve('/ai-traces/[traceName]', { traceName: encodeURIComponent(data.traceName) })
+				fallbackPath: resolve('/ai-traces/[traceName]', {
+					traceName: encodeURIComponent(data.traceName)
+				})
 			})}
 			backLabel="Back to Trace"
 			onRetry={loadData}
@@ -225,7 +236,9 @@
 			title="Failed to Load AI Trace"
 			description={error}
 			onBack={createSmartBackHandler({
-				fallbackPath: resolve('/ai-traces/[traceName]', { traceName: encodeURIComponent(data.traceName) })
+				fallbackPath: resolve('/ai-traces/[traceName]', {
+					traceName: encodeURIComponent(data.traceName)
+				})
 			})}
 			backLabel="Back to Trace"
 			onRetry={loadData}
@@ -260,7 +273,11 @@
 						<LabelValue label="Cached Tokens" value={trace.cachedTokens.toLocaleString()} mono />
 					{/if}
 					{#if trace.reasoningTokens > 0}
-						<LabelValue label="Reasoning Tokens" value={trace.reasoningTokens.toLocaleString()} mono />
+						<LabelValue
+							label="Reasoning Tokens"
+							value={trace.reasoningTokens.toLocaleString()}
+							mono
+						/>
 					{/if}
 					{#if trace.userId}
 						<LabelValue label="User ID" value={trace.userId} mono />
@@ -294,8 +311,8 @@
 						<Card.Description>Messages exchanged with the model</Card.Description>
 					</div>
 					<button
-						class="text-xs text-muted-foreground hover:text-foreground transition-colors"
-						onclick={() => showRawJson = !showRawJson}
+						class="text-xs text-muted-foreground transition-colors hover:text-foreground"
+						onclick={() => (showRawJson = !showRawJson)}
 					>
 						{showRawJson ? 'Chat view' : 'Raw JSON'}
 					</button>
@@ -305,17 +322,27 @@
 						<div class="space-y-4">
 							{#if conv.input}
 								<div>
-									<p class="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Input</p>
+									<p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+										Input
+									</p>
 									<div class="max-h-96 overflow-auto rounded-md bg-muted p-4">
-										<pre class="font-mono text-sm whitespace-pre-wrap break-words">{formatConversationContent(conv.input)}</pre>
+										<pre
+											class="font-mono text-sm break-words whitespace-pre-wrap">{formatConversationContent(
+												conv.input
+											)}</pre>
 									</div>
 								</div>
 							{/if}
 							{#if conv.output}
 								<div>
-									<p class="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Output</p>
+									<p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+										Output
+									</p>
 									<div class="max-h-96 overflow-auto rounded-md bg-muted p-4">
-										<pre class="font-mono text-sm whitespace-pre-wrap break-words">{formatConversationContent(conv.output)}</pre>
+										<pre
+											class="font-mono text-sm break-words whitespace-pre-wrap">{formatConversationContent(
+												conv.output
+											)}</pre>
 									</div>
 								</div>
 							{/if}
@@ -324,25 +351,42 @@
 						<div class="space-y-3">
 							{#each chatMessages as msg}
 								<div class="flex gap-3 {msg.role === 'assistant' ? '' : ''}">
-									<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium
-										{msg.role === 'user' ? 'bg-primary text-primary-foreground' :
-										 msg.role === 'assistant' ? 'bg-muted text-muted-foreground border' :
-										 msg.role === 'system' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
-										 'bg-muted text-muted-foreground'}">
+									<div
+										class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium
+										{msg.role === 'user'
+											? 'bg-primary text-primary-foreground'
+											: msg.role === 'assistant'
+												? 'border bg-muted text-muted-foreground'
+												: msg.role === 'system'
+													? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+													: 'bg-muted text-muted-foreground'}"
+									>
 										{getRoleLabel(msg.role).charAt(0)}
 									</div>
-									<div class="flex-1 min-w-0">
-										<p class="text-xs font-medium text-muted-foreground mb-1">{getRoleLabel(msg.role)}</p>
+									<div class="min-w-0 flex-1">
+										<p class="mb-1 text-xs font-medium text-muted-foreground">
+											{getRoleLabel(msg.role)}
+										</p>
 										{#each getMessageImages(msg.content) as imageUrl}
-											<div class="mb-2 max-w-sm">
-												<img src={imageUrl} alt="Attached image" class="rounded-md border max-h-64 object-contain" />
-											</div>
+											{#if imageUrl && !imageUrl.includes('REDACTED')}
+												<div class="mb-2 max-w-sm">
+													<img
+														src={imageUrl}
+														alt="Attached image"
+														class="max-h-64 rounded-md border object-contain"
+													/>
+												</div>
+											{/if}
 										{/each}
 										{#if getMessageText(msg.content)}
-											<div class="rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words
-												{msg.role === 'user' ? 'bg-primary/10' :
-												 msg.role === 'system' ? 'bg-amber-500/10 font-mono text-xs' :
-												 'bg-muted'}">
+											<div
+												class="rounded-lg px-3 py-2 text-sm break-words whitespace-pre-wrap
+												{msg.role === 'user'
+													? 'bg-primary/10'
+													: msg.role === 'system'
+														? 'bg-amber-500/10 font-mono text-xs'
+														: 'bg-muted'}"
+											>
 												{getMessageText(msg.content)}
 											</div>
 										{/if}
