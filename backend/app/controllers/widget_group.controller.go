@@ -328,6 +328,10 @@ func ensureDefaultWidgetGroups(tx *sql.Tx, projectId uuid.UUID) error {
 	var groupDefs []groupDef
 
 	if isOtel {
+		// Defaults track what `traceway-otel-agent` emits out-of-the-box from
+		// hostmetricsreceiver (cpu/memory/load/disk/filesystem/network/process
+		// scrapers, with *.utilization opt-ins). See config/default.yaml in
+		// traceway-otel-agent for the source set.
 		groupDefs = append(groupDefs,
 			groupDef{
 				name: "System",
@@ -336,14 +340,26 @@ func ensureDefaultWidgetGroups(tx *sql.Tx, projectId uuid.UUID) error {
 					{"Memory Utilization", "system.memory.utilization"},
 					{"Memory Usage", "system.memory.usage"},
 					{"Load Avg (1m)", "system.cpu.load_average.1m"},
+					{"Load Avg (5m)", "system.cpu.load_average.5m"},
+					{"Load Avg (15m)", "system.cpu.load_average.15m"},
 				},
 			},
 			groupDef{
-				name: "Disk / Net",
+				name: "Storage",
 				widgets: []widgetDef{
-					{"Disk I/O", "system.disk.io"},
+					{"Filesystem Utilization", "system.filesystem.utilization"},
 					{"Filesystem Usage", "system.filesystem.usage"},
+					{"Disk I/O", "system.disk.io"},
+					{"Disk IOPS", "system.disk.operations"},
+					{"Disk I/O Time", "system.disk.io_time"},
+				},
+			},
+			groupDef{
+				name: "Network",
+				widgets: []widgetDef{
 					{"Network I/O", "system.network.io"},
+					{"Network Packets", "system.network.packets"},
+					{"Network Errors", "system.network.errors"},
 					{"Open Connections", "system.network.connections"},
 				},
 			},
