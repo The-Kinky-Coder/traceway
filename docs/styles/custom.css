@@ -798,3 +798,16 @@ body[data-page^="protocol"] .nx-mx-auto.nx-flex > div.nx-w-64.nx-shrink-0 {
 .nextra-sidebar-container > :nth-child(2) > :nth-child(1) {
   flex: 1;
 }
+
+/* Nextra's sticky-bottom panels (Edit-on-GitHub at the bottom of the TOC,
+   collapse toggle at the bottom of the sidebar) ship with an opaque #111
+   background and a 16px white-ish drop shadow meant to fade scrolling content
+   beneath them. On Traceway's darker palette that reads as a misaligned box
+   with a glow. Drop the background + shadow, keep a hairline border-top so the
+   region is still subtly delineated. */
+nav.nextra-toc .nx-sticky.nx-bottom-0,
+.nextra-sidebar-container .nx-sticky.nx-bottom-0 {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
