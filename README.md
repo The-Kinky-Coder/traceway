@@ -98,22 +98,22 @@ Traceway integrates with the tools you already use. Every integration ships trac
 <table width="100%">
 <tbody>
 <tr>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/gin-middleware"><img src="./docs/public/gin.png" height="28" alt="Gin" /><br/><b>Gin</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/chi-middleware"><img src="./docs/public/chi.png" height="28" alt="Chi" /><br/><b>Chi</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/fiber-middleware"><img src="./docs/public/fiber.svg" height="28" alt="Fiber" /><br/><b>Fiber</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/fasthttp-middleware"><img src="./docs/public/fasthttp.png" height="28" alt="FastHTTP" /><br/><b>FastHTTP</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/gin-middleware"><img src="./docs/public/gin.png" height="28" alt="Gin" /><br/><b>Gin</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/chi-middleware"><img src="./docs/public/chi.png" height="28" alt="Chi" /><br/><b>Chi</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/fiber-middleware"><img src="./docs/public/fiber.svg" height="28" alt="Fiber" /><br/><b>Fiber</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/fasthttp-middleware"><img src="./docs/public/fasthttp.png" height="28" alt="FastHTTP" /><br/><b>FastHTTP</b></a></td>
 </tr>
 <tr>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/http-middleware"><img src="./docs/public/stdlib.png" height="28" alt="net/http" /><br/><b>net/http</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/sdk"><img src="./docs/public/custom.png" height="28" alt="Go Generic" /><br/><b>Go Generic</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/node-sdk"><img src="./docs/public/node.png" height="28" alt="Node.js" /><br/><b>Node.js</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/nestjs"><img src="./docs/public/nestjs.png" height="28" alt="NestJS" /><br/><b>NestJS</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/http-middleware"><img src="./docs/public/stdlib.png" height="28" alt="net/http" /><br/><b>net/http</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/sdk"><img src="./docs/public/custom.png" height="28" alt="Go Generic" /><br/><b>Go Generic</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/node-sdk"><img src="./docs/public/node.png" height="28" alt="Node.js" /><br/><b>Node.js</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/nestjs"><img src="./docs/public/nestjs.png" height="28" alt="NestJS" /><br/><b>NestJS</b></a></td>
 </tr>
 <tr>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/hono"><img src="./docs/public/hono.png" height="28" alt="Hono" /><br/><b>Hono</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/symfony"><img src="./docs/public/symfony.png" height="28" alt="Symfony" /><br/><b>Symfony</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/cloudflare"><img src="./docs/public/cloudflare.png" height="28" alt="Cloudflare Workers" /><br/><b>Cloudflare</b></a></td>
-<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/otel"><img src="./docs/public/otel.png" height="28" alt="OpenTelemetry" /><br/><b>OpenTelemetry</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/hono"><img src="./docs/public/hono.png" height="28" alt="Hono" /><br/><b>Hono</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/symfony"><img src="./docs/public/symfony.png" height="28" alt="Symfony" /><br/><b>Symfony</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/cloudflare"><img src="./docs/public/cloudflare.png" height="28" alt="Cloudflare Workers" /><br/><b>Cloudflare</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/otel"><img src="./docs/public/otel.png" height="28" alt="OpenTelemetry" /><br/><b>OpenTelemetry</b></a></td>
 </tr>
 </tbody>
 </table>
@@ -125,12 +125,12 @@ Traceway integrates with the tools you already use. Every integration ships trac
 <table width="100%">
 <tbody>
 <tr>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/nextjs"><img src="./docs/public/nextjs.png" height="28" alt="Next.js" /><br/><b>Next.js</b></a></td>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/react"><img src="./docs/public/react.png" height="28" alt="React" /><br/><b>React</b></a></td>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/vue"><img src="./docs/public/vue.png" height="28" alt="Vue" /><br/><b>Vue</b></a></td>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/svelte"><img src="./docs/public/svelte.png" height="28" alt="Svelte" /><br/><b>Svelte</b></a></td>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/jquery"><img src="./docs/public/jquery.png" height="28" alt="jQuery" /><br/><b>jQuery</b></a></td>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/js-sdk"><img src="./docs/public/javascript.png" height="28" alt="JavaScript" /><br/><b>JavaScript</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/nextjs"><img src="./docs/public/nextjs.png" height="28" alt="Next.js" /><br/><b>Next.js</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/react"><img src="./docs/public/react.png" height="28" alt="React" /><br/><b>React</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/vue"><img src="./docs/public/vue.png" height="28" alt="Vue" /><br/><b>Vue</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/svelte"><img src="./docs/public/svelte.png" height="28" alt="Svelte" /><br/><b>Svelte</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/jquery"><img src="./docs/public/jquery.png" height="28" alt="jQuery" /><br/><b>jQuery</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/js-sdk"><img src="./docs/public/javascript.png" height="28" alt="JavaScript" /><br/><b>JavaScript</b></a></td>
 </tr>
 </tbody>
 </table>
@@ -140,14 +140,20 @@ Traceway integrates with the tools you already use. Every integration ships trac
 <table>
 <tbody>
 <tr>
-<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/flutter"><img src="./docs/public/flutter.png" height="28" alt="Flutter" /><br/><b>Flutter</b></a></td>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/flutter"><img src="./docs/public/flutter.png" height="28" alt="Flutter" /><br/><b>Flutter</b></a></td>
 </tr>
 </tbody>
 </table>
 
 ### AI
 
-<a href="https://docs.tracewayapp.com/client/openrouter"><img src="./docs/public/openrouter.png" height="28" alt="OpenRouter" /></a> &nbsp; **[OpenRouter](https://docs.tracewayapp.com/client/openrouter)**
+<table>
+<tbody>
+<tr>
+<td align="center" width="150"><a href="https://docs.tracewayapp.com/client/openrouter"><img src="./docs/public/openrouter.png" height="28" alt="OpenRouter" /></a><br/><b>OpenRouter</b></a></td>
+</tr>
+</tbody>
+</table>
 
 ## Screenshots
 
