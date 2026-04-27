@@ -28,7 +28,7 @@ Traceway is an **OpenTelemetry-native** observability platform that stitches **l
 
 **MIT licensed. No BSL. No "open core."** Every feature is in the box. Self-host it for free, or run it on [Traceway Cloud](https://cloud.tracewayapp.com) if you'd rather not babysit infra.
 
-<img width="2452" height="1966" alt="Traceway Dashboard" src="https://github.com/user-attachments/assets/30a4fa24-7d08-4b36-a8f3-42abc73692fd" />
+<img alt="Traceway Dashboard" src="./website/public/images/performance-endpoints-impact-table.png" />
 
 ## What's in the box
 
@@ -155,12 +155,10 @@ Traceway integrates with the tools you already use. Every integration ships trac
 
 ## Screenshots
 
-|                                                                                                               |                                                                                                              |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Logs — trace-linked search**<br>![Logs](./website/public/images/logs-search-and-detail.png)                 | **Traces — cross-service**<br>![Traces](./website/public/images/traces-cross-service.png)                    |
-| **Span waterfall**<br>![Spans](./website/public/images/traces-spans-waterfall.png)                            | **Metrics — application dashboard**<br>![Metrics](./website/public/images/metrics-application-dashboard.png) |
-| **Session replay**<br>![Session Replay](./website/public/images/session-replay-viewer.png)                    | **Exceptions — grouped & ranked**<br>![Exceptions](./website/public/images/exceptions-grouped-ranked.png)    |
-| **Endpoint impact (Apdex)**<br>![Performance](./website/public/images/performance-endpoints-impact-table.png) | **AI observability**<br>![AI Traces](./website/public/images/ai-traces-list.png)                             |
+|                                                                                               |                                                                                                              |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Logs — trace-linked search**<br>![Logs](./website/public/images/logs-search-and-detail.png) | **Span waterfall**<br>![Spans](./website/public/images/traces-spans-waterfall.png)                           |
+| **Metrics — application dashboard**<br>![Metrics](./website/public/images/metrics-application-dashboard.png) | **Exceptions — grouped & ranked**<br>![Exceptions](./website/public/images/exceptions-grouped-ranked.png)    |
 
 ## Tech Stack
 
