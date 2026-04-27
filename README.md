@@ -95,32 +95,53 @@ Traceway integrates with the tools you already use. Every integration ships trac
 
 ### Backend
 
-|  |  |  |  |
-|:---:|:---:|:---:|:---:|
-| <a href="https://docs.tracewayapp.com/client/gin-middleware"><img src="./docs/public/gin.png" width="48" alt="Gin" /><br/>**Gin**</a> | <a href="https://docs.tracewayapp.com/client/chi-middleware"><img src="./docs/public/chi.png" width="48" alt="Chi" /><br/>**Chi**</a> | <a href="https://docs.tracewayapp.com/client/fiber-middleware"><img src="./docs/public/fiber.svg" width="48" alt="Fiber" /><br/>**Fiber**</a> | <a href="https://docs.tracewayapp.com/client/fasthttp-middleware"><img src="./docs/public/fasthttp.png" width="48" alt="FastHTTP" /><br/>**FastHTTP**</a> |
-| <a href="https://docs.tracewayapp.com/client/http-middleware"><img src="./docs/public/stdlib.png" width="48" alt="net/http" /><br/>**net/http**</a> | <a href="https://docs.tracewayapp.com/client/sdk"><img src="./docs/public/custom.png" width="48" alt="Go Generic" /><br/>**Go Generic**</a> | <a href="https://docs.tracewayapp.com/client/node-sdk"><img src="./docs/public/node.png" width="48" alt="Node.js" /><br/>**Node.js**</a> | <a href="https://docs.tracewayapp.com/client/nestjs"><img src="./docs/public/nestjs.png" width="48" alt="NestJS" /><br/>**NestJS**</a> |
-| <a href="https://docs.tracewayapp.com/client/hono"><img src="./docs/public/hono.png" width="48" alt="Hono" /><br/>**Hono**</a> | <a href="https://docs.tracewayapp.com/client/symfony"><img src="./docs/public/symfony.png" width="48" alt="Symfony" /><br/>**Symfony**</a> | <a href="https://docs.tracewayapp.com/client/cloudflare"><img src="./docs/public/cloudflare.png" width="48" alt="Cloudflare Workers" /><br/>**Cloudflare**</a> | <a href="https://docs.tracewayapp.com/client/otel"><img src="./docs/public/otel.png" width="48" alt="OpenTelemetry" /><br/>**OpenTelemetry**</a> |
+<table width="100%">
+<tbody>
+<tr>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/gin-middleware"><img src="./docs/public/gin.png" height="48" alt="Gin" /><br/><b>Gin</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/chi-middleware"><img src="./docs/public/chi.png" height="48" alt="Chi" /><br/><b>Chi</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/fiber-middleware"><img src="./docs/public/fiber.svg" height="48" alt="Fiber" /><br/><b>Fiber</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/fasthttp-middleware"><img src="./docs/public/fasthttp.png" height="48" alt="FastHTTP" /><br/><b>FastHTTP</b></a></td>
+</tr>
+<tr>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/http-middleware"><img src="./docs/public/stdlib.png" height="48" alt="net/http" /><br/><b>net/http</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/sdk"><img src="./docs/public/custom.png" height="48" alt="Go Generic" /><br/><b>Go Generic</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/node-sdk"><img src="./docs/public/node.png" height="48" alt="Node.js" /><br/><b>Node.js</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/nestjs"><img src="./docs/public/nestjs.png" height="48" alt="NestJS" /><br/><b>NestJS</b></a></td>
+</tr>
+<tr>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/hono"><img src="./docs/public/hono.png" height="48" alt="Hono" /><br/><b>Hono</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/symfony"><img src="./docs/public/symfony.png" height="48" alt="Symfony" /><br/><b>Symfony</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/cloudflare"><img src="./docs/public/cloudflare.png" height="48" alt="Cloudflare Workers" /><br/><b>Cloudflare</b></a></td>
+<td align="center" width="25%"><a href="https://docs.tracewayapp.com/client/otel"><img src="./docs/public/otel.png" height="48" alt="OpenTelemetry" /><br/><b>OpenTelemetry</b></a></td>
+</tr>
+</tbody>
+</table>
 
 ### Frontend
 
 > Session Replay is included with every frontend integration — and with Flutter too.
 
-|  |  |  |  |
-|:---:|:---:|:---:|:---:|
-| <a href="https://docs.tracewayapp.com/client/nextjs"><img src="./docs/public/nextjs.png" width="48" alt="Next.js" /><br/>**Next.js**</a> | <a href="https://docs.tracewayapp.com/client/react"><img src="./docs/public/react.png" width="48" alt="React" /><br/>**React**</a> | <a href="https://docs.tracewayapp.com/client/vue"><img src="./docs/public/vue.png" width="48" alt="Vue" /><br/>**Vue**</a> | <a href="https://docs.tracewayapp.com/client/svelte"><img src="./docs/public/svelte.png" width="48" alt="Svelte" /><br/>**Svelte**</a> |
-| <a href="https://docs.tracewayapp.com/client/jquery"><img src="./docs/public/jquery.png" width="48" alt="jQuery" /><br/>**jQuery**</a> | <a href="https://docs.tracewayapp.com/client/js-sdk"><img src="./docs/public/javascript.png" width="48" alt="JavaScript" /><br/>**JavaScript**</a> |  |  |
+<table width="100%">
+<tbody>
+<tr>
+<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/nextjs"><img src="./docs/public/nextjs.png" height="48" alt="Next.js" /><br/><b>Next.js</b></a></td>
+<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/react"><img src="./docs/public/react.png" height="48" alt="React" /><br/><b>React</b></a></td>
+<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/vue"><img src="./docs/public/vue.png" height="48" alt="Vue" /><br/><b>Vue</b></a></td>
+<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/svelte"><img src="./docs/public/svelte.png" height="48" alt="Svelte" /><br/><b>Svelte</b></a></td>
+<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/jquery"><img src="./docs/public/jquery.png" height="48" alt="jQuery" /><br/><b>jQuery</b></a></td>
+<td align="center" width="16.66%"><a href="https://docs.tracewayapp.com/client/js-sdk"><img src="./docs/public/javascript.png" height="48" alt="JavaScript" /><br/><b>JavaScript</b></a></td>
+</tr>
+</tbody>
+</table>
 
 ### Mobile
 
-|  |  |  |  |
-|:---:|:---:|:---:|:---:|
-| <a href="https://docs.tracewayapp.com/client/flutter"><img src="./docs/public/flutter.png" width="48" alt="Flutter" /><br/>**Flutter**</a> |  |  |  |
+<a href="https://docs.tracewayapp.com/client/flutter"><img src="./docs/public/flutter.png" height="48" alt="Flutter" /></a> &nbsp; **[Flutter](https://docs.tracewayapp.com/client/flutter)**
 
 ### AI
 
-|  |  |  |  |
-|:---:|:---:|:---:|:---:|
-| <a href="https://docs.tracewayapp.com/client/openrouter"><img src="./docs/public/openrouter.png" width="48" alt="OpenRouter" /><br/>**OpenRouter**</a> |  |  |  |
+<a href="https://docs.tracewayapp.com/client/openrouter"><img src="./docs/public/openrouter.png" height="48" alt="OpenRouter" /></a> &nbsp; **[OpenRouter](https://docs.tracewayapp.com/client/openrouter)**
 
 ## Screenshots
 
