@@ -15,6 +15,20 @@ type convertedMetrics struct {
 	Entries []repositories.MetricRegistrationEntry
 }
 
+// processResourceAttrAllowlist names the OTel Resource attributes we lift
+// onto each metric point's tags. Necessary because the hostmetrics process
+// scraper distinguishes per-process metrics via Resource attributes (one
+// ResourceMetrics per process), not data-point attributes — without this,
+// every process.* point looks identical save for the value. The list is an
+// allowlist rather than a passthrough so other receivers can't blow up
+// metric_points cardinality with arbitrary resource attrs.
+var processResourceAttrAllowlist = []string{
+	"process.pid",
+	"process.executable.name",
+	"process.command_line",
+	"process.owner",
+}
+
 func convertMetricPoints(projectId uuid.UUID, req *colmetricspb.ExportMetricsServiceRequest) convertedMetrics {
 	var points []models.MetricPoint
 	seenEntries := make(map[string]repositories.MetricRegistrationEntry)
@@ -22,6 +36,7 @@ func convertMetricPoints(projectId uuid.UUID, req *colmetricspb.ExportMetricsSer
 	for _, rm := range req.ResourceMetrics {
 		resAttrs := rm.GetResource().GetAttributes()
 		sn := getStringAttribute(resAttrs, "service.name")
+		resTags := extractProcessResourceTags(resAttrs)
 
 		for _, sm := range rm.ScopeMetrics {
 			for _, metric := range sm.Metrics {
@@ -30,7 +45,7 @@ func convertMetricPoints(projectId uuid.UUID, req *colmetricspb.ExportMetricsSer
 
 				switch data := metric.Data.(type) {
 				case *metricspb.Metric_Gauge:
-					points = appendNumberDataPoints(points, projectId, name, sn, data.Gauge.GetDataPoints())
+					points = appendNumberDataPoints(points, projectId, name, sn, resTags, data.Gauge.GetDataPoints())
 					if _, ok := seenEntries[name]; !ok {
 						seenEntries[name] = repositories.MetricRegistrationEntry{
 							Name:       name,
@@ -39,7 +54,7 @@ func convertMetricPoints(projectId uuid.UUID, req *colmetricspb.ExportMetricsSer
 						}
 					}
 				case *metricspb.Metric_Sum:
-					points = appendNumberDataPoints(points, projectId, name, sn, data.Sum.GetDataPoints())
+					points = appendNumberDataPoints(points, projectId, name, sn, resTags, data.Sum.GetDataPoints())
 					if _, ok := seenEntries[name]; !ok {
 						mt := "gauge"
 						if data.Sum.IsMonotonic {
@@ -54,7 +69,7 @@ func convertMetricPoints(projectId uuid.UUID, req *colmetricspb.ExportMetricsSer
 				case *metricspb.Metric_Histogram:
 					for _, dp := range data.Histogram.GetDataPoints() {
 						ts := nanoToTime(dp.TimeUnixNano)
-						tags := buildTags(sn, dp.Attributes)
+						tags := buildTags(sn, resTags, dp.Attributes)
 						if dp.Count > 0 && dp.Sum != nil {
 							points = append(points, models.MetricPoint{
 								ProjectId:  projectId,
@@ -101,7 +116,7 @@ func convertMetricPoints(projectId uuid.UUID, req *colmetricspb.ExportMetricsSer
 	return convertedMetrics{Points: points, Entries: entries}
 }
 
-func appendNumberDataPoints(points []models.MetricPoint, projectId uuid.UUID, name, serverName string, dps []*metricspb.NumberDataPoint) []models.MetricPoint {
+func appendNumberDataPoints(points []models.MetricPoint, projectId uuid.UUID, name, serverName string, resTags map[string]string, dps []*metricspb.NumberDataPoint) []models.MetricPoint {
 	for _, dp := range dps {
 		var value float64
 		switch v := dp.Value.(type) {
@@ -110,7 +125,7 @@ func appendNumberDataPoints(points []models.MetricPoint, projectId uuid.UUID, na
 		case *metricspb.NumberDataPoint_AsInt:
 			value = float64(v.AsInt)
 		}
-		tags := buildTags(serverName, dp.Attributes)
+		tags := buildTags(serverName, resTags, dp.Attributes)
 		points = append(points, models.MetricPoint{
 			ProjectId:  projectId,
 			Name:       name,
@@ -122,13 +137,38 @@ func appendNumberDataPoints(points []models.MetricPoint, projectId uuid.UUID, na
 	return points
 }
 
-func buildTags(serverName string, attrs []*commonpb.KeyValue) map[string]string {
+func buildTags(serverName string, resTags map[string]string, attrs []*commonpb.KeyValue) map[string]string {
 	tags := extractAttributes(attrs)
 	if tags == nil {
-		tags = make(map[string]string)
+		tags = make(map[string]string, len(resTags)+1)
+	}
+	for k, v := range resTags {
+		if _, exists := tags[k]; !exists {
+			tags[k] = v
+		}
 	}
 	if serverName != "" {
 		tags["server_name"] = serverName
 	}
 	return tags
+}
+
+func extractProcessResourceTags(resAttrs []*commonpb.KeyValue) map[string]string {
+	if len(resAttrs) == 0 {
+		return nil
+	}
+	all := extractAttributes(resAttrs)
+	if len(all) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(processResourceAttrAllowlist))
+	for _, k := range processResourceAttrAllowlist {
+		if v, ok := all[k]; ok && v != "" {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
