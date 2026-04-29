@@ -32,7 +32,21 @@ The `docker-compose.yml` in the repository root is ready to use out of the box. 
 | `POSTGRES_PASSWORD` | `traceway` | PostgreSQL password |
 | `POSTGRES_SSLMODE` | `disable` | PostgreSQL SSL mode |
 | `JWT_SECRET` | `change-this-to-a-secure-secret-at-least-32-chars` | JWT signing secret (min 32 chars) |
-| `APP_BASE_URL` | *(none)* | Public URL of your Traceway instance (e.g. `https://traceway.example.com`). Used for SDK setup instructions and email links. |
+| `APP_BASE_URL` | *(none)* | Public URL of your Traceway instance (e.g. `https://traceway.example.com`). Used for SDK setup instructions, email links, and OAuth callback URLs. |
+
+## SSO (optional)
+
+Adds **Continue with Google** / **Continue with GitHub** buttons to the login and register pages. See the [SSO guide](/learn/sso) for the full provider setup walkthrough.
+
+When configuring providers, set the callback URL on the provider side to `<APP_BASE_URL>/api/auth/callback/{google|github}`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GOOGLE_CLIENT_ID` | *(unset)* | Google OAuth client ID. Setting both Google variables enables the Google button. |
+| `GOOGLE_CLIENT_SECRET` | *(unset)* | Google OAuth client secret. |
+| `GITHUB_CLIENT_ID` | *(unset)* | GitHub OAuth App client ID. Setting both GitHub variables enables the GitHub button. |
+| `GITHUB_CLIENT_SECRET` | *(unset)* | GitHub OAuth App client secret. |
+| `OAUTH_SESSION_SECRET` | *(falls back to `JWT_SECRET`)* | Cookie signing secret for the OAuth round-trip. Override to rotate independently of `JWT_SECRET`. |
 
 ## Access Points
 

@@ -84,6 +84,20 @@ targets:
       - name: JWT_SECRET
         from:
           env: JWT_SECRET
+      # Optional: SSO providers. Omit a pair to disable that button.
+      # See /learn/sso for the full setup walkthrough.
+      - name: GOOGLE_CLIENT_ID
+        from:
+          env: GOOGLE_CLIENT_ID
+      - name: GOOGLE_CLIENT_SECRET
+        from:
+          env: GOOGLE_CLIENT_SECRET
+      - name: GITHUB_CLIENT_ID
+        from:
+          env: GITHUB_CLIENT_ID
+      - name: GITHUB_CLIENT_SECRET
+        from:
+          env: GITHUB_CLIENT_SECRET
 ```
 
 Sensitive values use `from: env:` to read from environment variables on your machine at deploy time rather than being stored in the YAML file. Set them before deploying:
@@ -92,6 +106,12 @@ Sensitive values use `from: env:` to read from environment variables on your mac
 export CLICKHOUSE_PASSWORD=your-clickhouse-password
 export POSTGRES_PASSWORD=your-postgres-password
 export JWT_SECRET=your-jwt-secret-at-least-32-chars
+
+# Optional, only when enabling SSO
+export GOOGLE_CLIENT_ID=...
+export GOOGLE_CLIENT_SECRET=...
+export GITHUB_CLIENT_ID=...
+export GITHUB_CLIENT_SECRET=...
 ```
 
 ## Deployment
@@ -156,6 +176,13 @@ Point your SDK's connection string at your Traceway domain:
 | `POSTGRES_PASSWORD` | *(from env)* | PostgreSQL password |
 | `POSTGRES_SSLMODE` | `disable` | PostgreSQL SSL mode |
 | `JWT_SECRET` | *(from env)* | JWT signing secret (min 32 chars) |
+| `GOOGLE_CLIENT_ID` | *(unset)* | Optional. Google OAuth client ID. Setting both Google variables enables the **Continue with Google** button. See the [SSO guide](/learn/sso). |
+| `GOOGLE_CLIENT_SECRET` | *(unset)* | Optional. Google OAuth client secret. |
+| `GITHUB_CLIENT_ID` | *(unset)* | Optional. GitHub OAuth App client ID. Setting both GitHub variables enables the **Continue with GitHub** button. |
+| `GITHUB_CLIENT_SECRET` | *(unset)* | Optional. GitHub OAuth App client secret. |
+| `OAUTH_SESSION_SECRET` | *(falls back to `JWT_SECRET`)* | Optional. Cookie signing secret for the OAuth round-trip. |
+
+When configuring providers, set the callback URL on the provider side to `https://traceway.yourdomain.com/api/auth/callback/{google|github}`.
 
 ## Useful Commands
 

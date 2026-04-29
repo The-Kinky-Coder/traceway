@@ -46,7 +46,21 @@ After starting, open `http://localhost/register` to create your first account.
 | `POSTGRES_PASSWORD` | PostgreSQL password | `password` |
 | `POSTGRES_SSLMODE` | PostgreSQL SSL mode | `disable` |
 | `JWT_SECRET` | JWT signing secret (min 32 chars) | `your-secret-here` |
-| `APP_BASE_URL` | Public URL of your instance. Used for SDK setup instructions and email links. | `https://traceway.example.com` |
+| `APP_BASE_URL` | Public URL of your instance. Used for SDK setup instructions, email links, and OAuth callback URLs. | `https://traceway.example.com` |
+
+## SSO (optional)
+
+Adds **Continue with Google** / **Continue with GitHub** buttons to the login and register pages. See the [SSO guide](/learn/sso) for the full provider setup walkthrough.
+
+When configuring providers, set the callback URL on the provider side to `<APP_BASE_URL>/api/auth/callback/{google|github}`.
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID. Setting both Google variables enables the Google button. | `...apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. | `GOCSPX-...` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App client ID. Setting both GitHub variables enables the GitHub button. | `Ov23li...` |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret. | `(40-char hex)` |
+| `OAUTH_SESSION_SECRET` | Cookie signing secret for the OAuth round-trip. Falls back to `JWT_SECRET` when unset. | `(32+ random bytes)` |
 
 ## Access Points
 

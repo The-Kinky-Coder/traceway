@@ -9,6 +9,7 @@
   "metrics": "Metrics",
   "logs": "Logs",
   "alerts": "Alerts",
+  "sso": "SSO",
   "embedded-mode": "Embedded Mode",
   "otel-agent": "OTel Agent",
   "build-tags": "Build Tags",

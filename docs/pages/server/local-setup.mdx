@@ -73,7 +73,14 @@ POSTGRES_SSLMODE=disable
 | `POSTGRES_USERNAME` | PostgreSQL username |
 | `POSTGRES_PASSWORD` | PostgreSQL password |
 | `POSTGRES_SSLMODE` | PostgreSQL SSL mode (`disable`, `require`, etc.) |
-| `APP_BASE_URL` | Public URL of your Traceway instance. Used for SDK connection instructions and email links. Not needed for local development. |
+| `APP_BASE_URL` | Public URL of your Traceway instance. Used for SDK connection instructions, email links, and OAuth callback URLs. For local dev set this to `http://localhost:5173` so OAuth callbacks land on the Vite dev server (which proxies `/api` back to the Go backend). |
+| `GOOGLE_CLIENT_ID` | Optional. Google OAuth client ID. Setting both Google variables enables the **Continue with Google** button. See the [SSO guide](/learn/sso). |
+| `GOOGLE_CLIENT_SECRET` | Optional. Google OAuth client secret. |
+| `GITHUB_CLIENT_ID` | Optional. GitHub OAuth App client ID. Setting both GitHub variables enables the **Continue with GitHub** button. See the [SSO guide](/learn/sso). |
+| `GITHUB_CLIENT_SECRET` | Optional. GitHub OAuth App client secret. |
+| `OAUTH_SESSION_SECRET` | Optional. Cookie signing secret for the OAuth round-trip. Falls back to `JWT_SECRET` when unset. |
+
+For local OAuth testing, register the provider's callback URL as `http://localhost:5173/api/auth/callback/github` (or `.../google`).
 
 3. Run the backend:
 ```bash
