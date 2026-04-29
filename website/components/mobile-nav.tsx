@@ -86,6 +86,14 @@ export function MobileNav({
                 Docs
               </Link>
               <Link
+                href="/blog"
+                onClick={() => setOpen(false)}
+                className="py-3 text-[16px] font-medium text-[color:var(--fg-0)] hover:text-[color:var(--a2)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Blog
+              </Link>
+              <Link
                 href="https://github.com/tracewayapp/traceway"
                 target="_blank"
                 rel="noopener noreferrer"

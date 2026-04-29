@@ -1351,3 +1351,197 @@
 .flutter-replay-mount .rr-controller {
   display: none !important;
 }
+
+/* ── Blog prose — markdown-rendered post content ────────────────────────── */
+.prose-tw {
+  color: var(--fg-1);
+  font-size: 16px;
+  line-height: 1.75;
+  font-family: var(--font-display);
+}
+.prose-tw > * + * {
+  margin-top: 1.25em;
+}
+.prose-tw h2,
+.prose-tw h3,
+.prose-tw h4 {
+  color: var(--fg-0);
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.prose-tw h2 {
+  font-size: 26px;
+  margin-top: 2.2em;
+  margin-bottom: 0.6em;
+  padding-top: 1.2em;
+  border-top: 1px solid var(--hair);
+}
+.prose-tw h3 {
+  font-size: 20px;
+  margin-top: 1.8em;
+  margin-bottom: 0.5em;
+}
+.prose-tw h4 {
+  font-size: 17px;
+  margin-top: 1.6em;
+  margin-bottom: 0.4em;
+}
+.prose-tw p {
+  color: var(--fg-1);
+}
+.prose-tw a {
+  color: var(--a2);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--a2) 40%, transparent);
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+.prose-tw a:hover {
+  text-decoration-color: var(--a2);
+}
+.prose-tw strong {
+  color: var(--fg-0);
+  font-weight: 600;
+}
+.prose-tw em {
+  color: var(--fg-0);
+  font-style: italic;
+}
+.prose-tw ul,
+.prose-tw ol {
+  padding-left: 1.4em;
+  color: var(--fg-1);
+}
+.prose-tw ul {
+  list-style: disc;
+}
+.prose-tw ol {
+  list-style: decimal;
+}
+.prose-tw li {
+  margin-top: 0.4em;
+}
+.prose-tw li::marker {
+  color: var(--fg-3);
+}
+.prose-tw blockquote {
+  margin: 1.5em 0;
+  padding: 0.4em 1.2em;
+  border-left: 2px solid var(--a2);
+  color: var(--fg-2);
+  font-style: italic;
+  background: color-mix(in oklab, var(--ink-2) 60%, transparent);
+}
+.prose-tw hr {
+  border: 0;
+  border-top: 1px solid var(--hair);
+  margin: 2.5em 0;
+}
+.prose-tw img {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--hair);
+  max-width: 100%;
+  height: auto;
+}
+.prose-tw :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--ink-2);
+  border: 1px solid var(--hair);
+  color: var(--fg-0);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+.prose-tw pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  background: var(--ink-1);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+.prose-tw pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--fg-1);
+  font-size: inherit;
+}
+.prose-tw table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 1.5em 0;
+}
+.prose-tw th,
+.prose-tw td {
+  border-bottom: 1px solid var(--hair);
+  padding: 10px 12px;
+  text-align: left;
+}
+.prose-tw th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  font-weight: 500;
+}
+
+/* highlight.js — minimal palette tuned to Traceway tokens */
+.prose-tw .hljs {
+  color: var(--fg-1);
+  background: transparent;
+}
+.prose-tw .hljs-comment,
+.prose-tw .hljs-quote {
+  color: var(--fg-3);
+  font-style: italic;
+}
+.prose-tw .hljs-keyword,
+.prose-tw .hljs-selector-tag,
+.prose-tw .hljs-literal,
+.prose-tw .hljs-section,
+.prose-tw .hljs-link {
+  color: var(--a1);
+}
+.prose-tw .hljs-string,
+.prose-tw .hljs-attr,
+.prose-tw .hljs-template-tag,
+.prose-tw .hljs-template-variable,
+.prose-tw .hljs-addition {
+  color: var(--ok);
+}
+.prose-tw .hljs-title,
+.prose-tw .hljs-title.class_,
+.prose-tw .hljs-title.function_,
+.prose-tw .hljs-name,
+.prose-tw .hljs-built_in {
+  color: var(--a2);
+}
+.prose-tw .hljs-number,
+.prose-tw .hljs-symbol,
+.prose-tw .hljs-bullet,
+.prose-tw .hljs-meta {
+  color: var(--a4);
+}
+.prose-tw .hljs-variable,
+.prose-tw .hljs-type,
+.prose-tw .hljs-params {
+  color: var(--a3);
+}
+.prose-tw .hljs-deletion {
+  color: var(--crit);
+}
+.prose-tw .hljs-emphasis {
+  font-style: italic;
+}
+.prose-tw .hljs-strong {
+  font-weight: 600;
+  color: var(--fg-0);
+}
