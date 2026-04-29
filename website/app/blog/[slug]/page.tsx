@@ -24,6 +24,7 @@ export async function generateMetadata({
     description: post.excerpt,
     alternates: { canonical: `/blog/${post.slug}` },
   };
+}
 
 export default async function BlogPostPage({
   params,
