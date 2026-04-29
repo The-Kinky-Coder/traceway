@@ -54,6 +54,13 @@
 	// Backend / OTel exception pages must look identical to before.
 	const showSessionContext = $derived(isFrontend && (hasLogs || hasActions));
 	const defaultTab = $derived(hasLogs ? 'logs' : 'actions');
+
+	let currentTimeMs = $state(0);
+	let replayRef = $state<{ seek: (ms: number) => void } | null>(null);
+
+	function handleSeek(offsetMs: number) {
+		replayRef?.seek(offsetMs);
+	}
 </script>
 
 <!-- Session Replay -->
@@ -64,7 +71,11 @@
 		</Card.Header>
 		<Card.Content class="p-0">
 			{#key recordingEvents}
-				<SessionReplay events={recordingEvents as any} />
+				<SessionReplay
+					bind:this={replayRef}
+					events={recordingEvents as any}
+					onTimeUpdate={(ms) => (currentTimeMs = ms)}
+				/>
 			{/key}
 		</Card.Content>
 	</Card.Root>
@@ -92,12 +103,22 @@
 				</Tabs.List>
 				{#if hasLogs}
 					<Tabs.Content value="logs">
-						<SessionLogsTable {logs} startedAt={sessionRecording?.startedAt} />
+						<SessionLogsTable
+							{logs}
+							startedAt={sessionRecording?.startedAt}
+							{currentTimeMs}
+							onSeek={handleSeek}
+						/>
 					</Tabs.Content>
 				{/if}
 				{#if hasActions}
 					<Tabs.Content value="actions">
-						<SessionActionsTable {actions} startedAt={sessionRecording?.startedAt} />
+						<SessionActionsTable
+							{actions}
+							startedAt={sessionRecording?.startedAt}
+							{currentTimeMs}
+							onSeek={handleSeek}
+						/>
 					</Tabs.Content>
 				{/if}
 			</Tabs.Root>

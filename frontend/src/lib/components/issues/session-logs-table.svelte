@@ -7,9 +7,21 @@
 	interface Props {
 		logs: SessionLogEvent[];
 		startedAt?: string;
+		currentTimeMs?: number;
+		onSeek?: (offsetMs: number) => void;
 	}
 
-	let { logs, startedAt }: Props = $props();
+	let { logs, startedAt, currentTimeMs, onSeek }: Props = $props();
+
+	let scrollEl: HTMLDivElement | undefined = $state();
+
+	function offsetMs(timestamp: string): number {
+		if (!startedAt) return 0;
+		const start = Date.parse(startedAt);
+		const t = Date.parse(timestamp);
+		if (!Number.isFinite(start) || !Number.isFinite(t)) return 0;
+		return t - start;
+	}
 
 	function formatOffset(timestamp: string): string {
 		if (!startedAt) return timestamp;
@@ -37,12 +49,36 @@
 				return 'text-foreground';
 		}
 	}
+
+	const activeIndex = $derived.by(() => {
+		if (currentTimeMs == null) return -1;
+		let last = -1;
+		for (let i = 0; i < logs.length; i++) {
+			if (offsetMs(logs[i].timestamp) <= currentTimeMs) last = i;
+			else break;
+		}
+		return last;
+	});
+
+	$effect(() => {
+		const i = activeIndex;
+		if (i < 0 || !scrollEl) return;
+		const el = scrollEl.querySelectorAll<HTMLTableRowElement>('tbody tr')[i];
+		if (!el) return;
+		const top = el.offsetTop;
+		const bottom = top + el.offsetHeight;
+		if (top < scrollEl.scrollTop) {
+			scrollEl.scrollTo({ top, behavior: 'smooth' });
+		} else if (bottom > scrollEl.scrollTop + scrollEl.clientHeight) {
+			scrollEl.scrollTo({ top: bottom - scrollEl.clientHeight, behavior: 'smooth' });
+		}
+	});
 </script>
 
-<div class="rounded-md border overflow-hidden">
+<div bind:this={scrollEl} class="rounded-md border max-h-[440px] overflow-y-auto">
 	<Table.Root>
 		{#if logs.length > 0}
-			<Table.Header>
+			<Table.Header class="sticky top-0 bg-background z-10">
 				<Table.Row>
 					<TracewayTableHeader
 						label="Time"
@@ -62,8 +98,13 @@
 			{#if logs.length === 0}
 				<TableEmptyState colspan={3} message="No logs captured for this session." />
 			{:else}
-				{#each logs as entry}
-					<Table.Row>
+				{#each logs as entry, i}
+					<Table.Row
+						onclick={() => onSeek?.(offsetMs(entry.timestamp))}
+						class="cursor-pointer hover:bg-muted/50 {i === activeIndex
+							? 'bg-primary/10 border-l-2 border-l-primary'
+							: ''}"
+					>
 						<Table.Cell class="font-mono text-xs text-muted-foreground tabular-nums">
 							{formatOffset(entry.timestamp)}
 						</Table.Cell>
