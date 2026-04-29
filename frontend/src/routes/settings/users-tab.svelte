@@ -148,7 +148,7 @@
                                 {/if}
                             </Table.Cell>
                             <Table.Cell>
-                                <Badge variant="outline" class="bg-green-50 text-green-700 border-green-200">
+                                <Badge variant="outline" class="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-900">
                                     Active
                                 </Badge>
                             </Table.Cell>
