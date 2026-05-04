@@ -24,5 +24,6 @@
   "otel": "OpenTelemetry",
   "cloudflare": "Cloudflare Workers",
   "symfony": "Symfony",
-  "flutter": "Flutter"
+  "flutter": "Flutter",
+  "android": "Android"
 }

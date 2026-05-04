@@ -41,6 +41,7 @@ var validFrameworks = map[string]bool{
 	"symfony":        true,
 	// Mobile frameworks
 	"flutter":        true,
+	"android":        true,
 }
 
 // Project name validation regex: allows alphanumeric, spaces, hyphens, and underscores
@@ -88,7 +89,7 @@ func (p projectController) CreateProject(c *gin.Context) {
 
 	if !validFrameworks[request.Framework] {
 		traceway.CaptureMessage("Invalid framework received: " + request.Framework)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Framework must be one of: gin, fiber, chi, fasthttp, stdlib, custom, react, svelte, vuejs, jquery, hono, cloudflare, opentelemetry, symfony, flutter"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Framework must be one of: gin, fiber, chi, fasthttp, stdlib, custom, react, svelte, vuejs, jquery, hono, cloudflare, opentelemetry, symfony, flutter, android"})
 		return
 	}
 

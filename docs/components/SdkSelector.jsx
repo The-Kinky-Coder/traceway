@@ -23,6 +23,7 @@ const SDK_QUICK_START = {
   'cloudflare': '/client/cloudflare',
   'php-symfony': '/client/symfony',
   'flutter': '/client/flutter',
+  'android': '/client/android',
 }
 
 export default function SdkSelector() {

@@ -1,0 +1,234 @@
+# Android Quick Start
+
+Integrate Traceway into your native Android application with the [`com.tracewayapp:traceway`](https://central.sonatype.com/artifact/com.tracewayapp/traceway) library from Maven Central.
+
+## Installation
+
+Add the dependency to your app module's `build.gradle.kts`:
+
+```kotlin
+dependencies {
+    implementation("com.tracewayapp:traceway:1.0.0")
+}
+```
+
+Maven Central is enabled by default in modern Android projects — no extra `repositories { ... }` entry is required.
+
+## Setup
+
+Initialize the SDK from your `Application.onCreate()`. This wraps the whole process — every uncaught exception, on every thread, is captured automatically:
+
+```kotlin
+import android.app.Application
+import com.tracewayapp.traceway.Traceway
+import com.tracewayapp.traceway.TracewayOptions
+
+class MyApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Traceway.init(
+            application = this,
+            connectionString = "your-token@https://traceway.example.com/api/report",
+            options = TracewayOptions(version = "1.0.0"),
+        )
+    }
+}
+```
+
+Register the application class in `AndroidManifest.xml` and add the `INTERNET` permission so reports can leave the device:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:name=".MyApp" ...>
+        ...
+    </application>
+</manifest>
+```
+
+## Capture Errors Manually
+
+```kotlin
+import com.tracewayapp.traceway.Traceway
+
+// Capture a caught exception
+try {
+    riskyOperation()
+} catch (e: Throwable) {
+    Traceway.captureException(e)
+}
+
+// Capture a message
+Traceway.captureMessage("User completed onboarding")
+
+// Force send pending events
+Traceway.flush()
+```
+
+## With Options
+
+`TracewayOptions` accepts the following parameters. Field names mirror the Flutter SDK so configuration can be ported directly.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `sampleRate` | `Double` | `1.0` | Event sampling rate (0.0 to 1.0) |
+| `debug` | `Boolean` | `false` | Print debug info to logcat |
+| `version` | `String` | `""` | App version string |
+| `debounceMs` | `Long` | `1500` | Milliseconds before sending batched events |
+| `retryDelayMs` | `Long` | `10000` | Retry delay in ms on failed uploads |
+| `maxPendingExceptions` | `Int` | `5` | Max exceptions held in memory before oldest is dropped |
+| `persistToDisk` | `Boolean` | `true` | Persist pending exceptions to disk so they survive app restarts |
+| `maxLocalFiles` | `Int` | `5` | Max exception files stored on disk |
+| `localFileMaxAgeHours` | `Int` | `12` | Hours after which unsynced local files are deleted |
+| `captureLogs` | `Boolean` | `true` | Mirror every `println` / `System.out` / `System.err` line into the rolling log buffer |
+| `captureNetwork` | `Boolean` | `true` | Record network events sent through `TracewayOkHttpInterceptor` |
+| `captureNavigation` | `Boolean` | `true` | Record activity push / pop transitions |
+| `eventsWindowMs` | `Long` | `10000` | Rolling window kept in the log/action buffers (ms) |
+| `eventsMaxCount` | `Int` | `200` | Hard cap applied independently to logs and actions |
+| `screenCapture` | `Boolean` | `false` | **No effect on Android** — accepted for API parity |
+| `capturePixelRatio` | `Double` | `0.75` | **No effect on Android** |
+| `maxBufferFrames` | `Int` | `150` | **No effect on Android** |
+| `fps` | `Int` | `15` | **No effect on Android** |
+
+```kotlin
+Traceway.init(
+    application = this,
+    connectionString = "your-token@https://traceway.example.com/api/report",
+    options = TracewayOptions(
+        sampleRate = 0.5,
+        debug = true,
+        version = "2.1.0",
+        debounceMs = 2000,
+    ),
+)
+```
+
+> **No screen recording.** Unlike the Flutter SDK, the Android library does not record video. The `screenCapture`, `capturePixelRatio`, `maxBufferFrames`, and `fps` options are accepted for API parity but have no effect.
+
+## Logs & Actions
+
+Every captured exception ships with the last ~10 seconds of session context, attached to a `sessionRecordings` entry on the wire — the same shape the Flutter SDK uses (minus the video chunks). Two independent rolling buffers — **logs** and **actions** — are kept in memory, each capped at 200 entries by default.
+
+### Logs
+
+Every `println` and any other write to `System.out` / `System.err` is mirrored into the log buffer. Console output behaves normally; it just gets a copy.
+
+Calls that go straight to `android.util.Log` bypass `System.out` and are **not** captured automatically. To pick up Logcat lines, install a Timber tree (or any other logger) that calls `TracewayClient.instance?.recordLog(message, level)`:
+
+```kotlin
+import com.tracewayapp.traceway.TracewayClient
+import timber.log.Timber
+
+Timber.plant(object : Timber.Tree() {
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        TracewayClient.instance?.recordLog(message, level = priority.toLogLevel())
+    }
+})
+```
+
+### Actions
+
+Three kinds of actions are collected:
+
+- **Network** — every HTTP request routed through an OkHttp client with `TracewayOkHttpInterceptor` installed (method, URL, status, duration, request/response byte counts). Catches Retrofit, Coil, Glide-via-OkHttp, and your own usage:
+
+  ```kotlin
+  val client = OkHttpClient.Builder()
+      .addInterceptor(TracewayOkHttpInterceptor())
+      .build()
+  ```
+
+  For HTTP clients that aren't OkHttp, record events manually:
+
+  ```kotlin
+  TracewayClient.instance?.recordNetworkEvent(
+      NetworkEvent(method = "GET", url = "https://...", durationMs = 42L, statusCode = 200)
+  )
+  ```
+
+- **Navigation** — activity `push` / `pop` transitions, recorded automatically once `Traceway.init(...)` runs (the SDK registers an `Application.ActivityLifecycleCallbacks` for you). No wiring needed on your side.
+
+- **Custom** — anything your app records explicitly:
+
+  ```kotlin
+  Traceway.recordAction(
+      category = "cart",
+      name = "add_item",
+      data = mapOf("sku" to "SKU-123", "qty" to 2),
+  )
+  ```
+
+### Wire shape
+
+Logs and actions are sent to the backend inside the same `sessionRecordings` entry that the Flutter SDK uses for video — they're stored under separate `logs` and `actions` arrays. Each recording carries `startedAt` and `endedAt` ISO 8601 timestamps so the backend can align events on a timeline (`offsetIntoVideoMs = event.timestamp − recording.startedAt`):
+
+```json
+{
+  "sessionRecordings": [
+    {
+      "exceptionId": "...",
+      "startedAt": "2026-04-28T14:30:53.011Z",
+      "endedAt":   "2026-04-28T14:31:02.314Z",
+      "logs": [
+        {"type": "log", "timestamp": "2026-04-28T14:30:54.508Z", "level": "info", "message": "user tapped pay"}
+      ],
+      "actions": [
+        {"type": "navigation", "action": "push", "from": "/", "to": "/cart", "timestamp": "2026-04-28T14:30:53.011Z"},
+        {"type": "network", "method": "GET", "url": "...", "statusCode": 200, "durationMs": 86, "timestamp": "2026-04-28T14:30:54.422Z"},
+        {"type": "custom", "category": "cart", "name": "add_item", "data": {"sku": "SKU-1"}, "timestamp": "2026-04-28T14:30:54.605Z"}
+      ]
+    }
+  ]
+}
+```
+
+`startedAt` and `endedAt` come from the timestamp range of the buffered events. A session recording entry is created for every captured exception that has any timeline data.
+
+### Disabling channels
+
+Each channel can be turned off individually via `TracewayOptions`:
+
+```kotlin
+Traceway.init(
+    application = this,
+    connectionString = "your-token@https://traceway.example.com/api/report",
+    options = TracewayOptions(
+        captureLogs = false,        // println / System.out / System.err
+        captureNetwork = false,     // OkHttp interceptor events
+        captureNavigation = false,  // Activity push / pop
+    ),
+)
+```
+
+## What Gets Captured Automatically
+
+`Traceway.init(...)` sets up capture for the following sources with no additional configuration:
+
+- **Uncaught Java/Kotlin exceptions** on every thread, via `Thread.setDefaultUncaughtExceptionHandler`
+- **View click handler throws** — uncaught exceptions inside `View.OnClickListener`, `AlertDialog` button handlers, and similar UI callbacks
+- **Background thread throws** — anything that escapes a `Thread`'s `run()` body
+- **Main `Handler.post` throws** — async exceptions on the main looper, caught by the default uncaught-exception handler
+- **Activity lifecycle transitions** — `push` / `pop` recorded as navigation actions
+
+## Test Your Integration
+
+Add a button that throws an exception to verify everything is wired up:
+
+```kotlin
+Button(this).apply {
+    text = "Send Test Error"
+    setOnClickListener {
+        throw RuntimeException("Test error from Traceway")
+    }
+}
+```
+
+Tap the button and check your Traceway dashboard to verify the error appears with its full stack trace.
+
+## Platform Support
+
+| Platform | Error Tracking | Screen Recording |
+|----------|----------------|------------------|
+| Android (API 21+) | Yes | No |
+
+For Flutter apps that need cross-platform error tracking (and screen recording on iOS / Android / macOS), use the [Flutter SDK](/client/flutter?sdk=flutter) instead — it ships the same wire format so a single Traceway backend handles both.

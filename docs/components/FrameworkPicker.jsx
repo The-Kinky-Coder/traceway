@@ -168,6 +168,14 @@ const FRAMEWORKS = [
     href: "/client/flutter",
     badge: "new",
   },
+  {
+    value: "android",
+    label: "Android",
+    description: "Native Android (Kotlin/Java) apps with automatic exception capture, logs, HTTP, and navigation breadcrumbs.",
+    icon: "/android.png",
+    href: "/client/android",
+    badge: "new",
+  },
 ];
 
 export default function FrameworkPicker() {

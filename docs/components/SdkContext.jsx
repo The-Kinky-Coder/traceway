@@ -22,6 +22,7 @@ export const SDK_OPTIONS = [
   { value: 'js-nextjs', label: 'Next.js (OTel)' },
   { value: 'php-symfony', label: 'Symfony' },
   { value: 'flutter', label: 'Flutter' },
+  { value: 'android', label: 'Android' },
 ]
 
 const STORAGE_KEY = 'traceway-docs-sdk'
@@ -46,6 +47,7 @@ const PATH_SDK_MAP = {
   'nextjs': 'js-nextjs',
   'symfony': 'php-symfony',
   'flutter': 'flutter',
+  'android': 'android',
 }
 
 const SdkContext = createContext({

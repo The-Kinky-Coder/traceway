@@ -40,6 +40,8 @@ export function getInstallCommand(framework: Framework): string {
 			return '';
 		case 'flutter':
 			return 'flutter pub add traceway';
+		case 'android':
+			return 'implementation("com.tracewayapp:traceway:1.0.0")';
 		case 'custom':
 		default:
 			return base;
@@ -301,6 +303,22 @@ void main() {
   );
 }`;
 
+		case 'android':
+			return `import android.app.Application
+import com.tracewayapp.traceway.Traceway
+import com.tracewayapp.traceway.TracewayOptions
+
+class MyApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Traceway.init(
+            application = this,
+            connectionString = "${connectionString}",
+            options = TracewayOptions(version = "1.0.0"),
+        )
+    }
+}`;
+
 		case 'custom':
 		default:
 			return `package main
@@ -341,6 +359,10 @@ class TestController
 		return `// Trigger a test error
 throw StateError('Test error from Traceway integration');`;
 	}
+	if (framework === 'android') {
+		return `// Trigger a test error
+throw RuntimeException("Test error from Traceway integration")`;
+	}
 	if (framework && isJsFramework(framework)) {
 		return `// Trigger a test error
 throw new Error("Test error from Traceway integration");`;
@@ -361,6 +383,15 @@ TracewayClient.instance?.captureException(
   Exception('Test error'),
   StackTrace.current,
 );`;
+	}
+	if (framework === 'android') {
+		return `import com.tracewayapp.traceway.Traceway
+
+try {
+    riskyOperation()
+} catch (e: Throwable) {
+    Traceway.captureException(e)
+}`;
 	}
 	if (framework && isJsFramework(framework)) {
 		switch (framework) {
@@ -430,6 +461,7 @@ export function getFrameworkLabel(framework: Framework): string {
 		opentelemetry: 'OpenTelemetry',
 		symfony: 'Symfony',
 		flutter: 'Flutter',
+		android: 'Android',
 	};
 	return labels[framework] || framework;
 }
@@ -440,5 +472,6 @@ export function getCodeLanguage(framework: Framework): 'go' | 'javascript' | 'ba
 	if (framework === 'hono') return 'javascript';
 	if (framework === 'cloudflare') return 'javascript';
 	if (framework === 'flutter') return 'javascript'; // closest to Dart syntax highlighting
+	if (framework === 'android') return 'javascript'; // closest to Kotlin syntax highlighting
 	return isJsFramework(framework) ? 'javascript' : 'go';
 }

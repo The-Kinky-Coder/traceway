@@ -36,6 +36,7 @@
         { value: 'cloudflare', label: 'Cloudflare', description: 'Cloudflare Workers (OTLP Traces)', group: 'Backend' },
         { value: 'opentelemetry', label: 'OpenTelemetry', description: 'Vendor-neutral observability', group: 'Backend' },
         { value: 'flutter', label: 'Flutter', description: 'Mobile UI framework', group: 'Mobile' },
+        { value: 'android', label: 'Android', description: 'Native Android (Kotlin/Java)', group: 'Mobile' },
     ] as const;
 
     const selectedFrameworkLabel = $derived(getFrameworkLabel(value));

@@ -1,9 +1,9 @@
 import { api } from '$lib/api';
 import { authState } from './auth.svelte';
 
-export type Framework = 'gin' | 'fiber' | 'chi' | 'fasthttp' | 'stdlib' | 'custom' | 'react' | 'svelte' | 'vuejs' | 'nextjs' | 'nestjs' | 'express' | 'remix' | 'jquery' | 'hono' | 'cloudflare' | 'opentelemetry' | 'symfony' | 'flutter';
+export type Framework = 'gin' | 'fiber' | 'chi' | 'fasthttp' | 'stdlib' | 'custom' | 'react' | 'svelte' | 'vuejs' | 'nextjs' | 'nestjs' | 'express' | 'remix' | 'jquery' | 'hono' | 'cloudflare' | 'opentelemetry' | 'symfony' | 'flutter' | 'android';
 
-export const FRONTEND_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'jquery', 'flutter'];
+export const FRONTEND_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'jquery', 'flutter', 'android'];
 export const JS_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'nextjs', 'nestjs', 'express', 'remix', 'jquery'];
 
 export const FRAMEWORK_LABELS: Record<Framework, string> = {
@@ -26,9 +26,10 @@ export const FRAMEWORK_LABELS: Record<Framework, string> = {
 	opentelemetry: 'OpenTelemetry',
 	symfony: 'Symfony',
 	flutter: 'Flutter',
+	android: 'Android',
 };
 
-export const MOBILE_FRAMEWORKS: Framework[] = ['flutter'];
+export const MOBILE_FRAMEWORKS: Framework[] = ['flutter', 'android'];
 
 export function getFrameworkLabel(fw: Framework): string {
 	return FRAMEWORK_LABELS[fw] ?? fw;

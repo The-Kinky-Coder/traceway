@@ -24,6 +24,7 @@ const SDK_VISIBILITY = {
   nextjs: "js-nextjs",
   symfony: "php-symfony",
   flutter: "flutter",
+  android: "android",
 };
 
 export default {
