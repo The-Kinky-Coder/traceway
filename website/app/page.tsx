@@ -29,6 +29,13 @@ export default function Home() {
       <section className="hero gridbg">
         <div className="wrap">
           <div className="text-center max-w-3xl mx-auto flex flex-col items-center">
+            <Image
+              src="/images/frameworks/otel.png"
+              alt="OpenTelemetry"
+              width={56}
+              height={56}
+              className="mb-5"
+            />
             <Chip variant="ok">OpenTelemetry-native</Chip>
             <h1 className="mt-6">
               Observability that <em>closes the loop.</em>
