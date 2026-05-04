@@ -337,13 +337,14 @@ func ComputeExceptionHash(stackTrace string, isMessage bool) string {
 }
 
 var jsFrameworks = map[string]bool{
-	"react":   true,
-	"svelte":  true,
-	"vuejs":   true,
-	"nextjs":  true,
-	"nestjs":  true,
-	"express": true,
-	"remix":   true,
+	"react":        true,
+	"svelte":       true,
+	"vuejs":        true,
+	"nextjs":       true,
+	"nestjs":       true,
+	"express":      true,
+	"remix":        true,
+	"react-native": true,
 }
 
 func isJsFramework(framework string) bool {

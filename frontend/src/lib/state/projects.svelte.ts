@@ -1,10 +1,10 @@
 import { api } from '$lib/api';
 import { authState } from './auth.svelte';
 
-export type Framework = 'gin' | 'fiber' | 'chi' | 'fasthttp' | 'stdlib' | 'custom' | 'react' | 'svelte' | 'vuejs' | 'nextjs' | 'nestjs' | 'express' | 'remix' | 'jquery' | 'hono' | 'cloudflare' | 'opentelemetry' | 'symfony' | 'flutter' | 'android';
+export type Framework = 'gin' | 'fiber' | 'chi' | 'fasthttp' | 'stdlib' | 'custom' | 'react' | 'svelte' | 'vuejs' | 'nextjs' | 'nestjs' | 'express' | 'remix' | 'jquery' | 'react-native' | 'hono' | 'cloudflare' | 'opentelemetry' | 'symfony' | 'flutter' | 'android';
 
-export const FRONTEND_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'jquery', 'flutter', 'android'];
-export const JS_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'nextjs', 'nestjs', 'express', 'remix', 'jquery'];
+export const FRONTEND_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'jquery', 'react-native', 'flutter', 'android'];
+export const JS_FRAMEWORKS: Framework[] = ['react', 'svelte', 'vuejs', 'nextjs', 'nestjs', 'express', 'remix', 'jquery', 'react-native'];
 
 export const FRAMEWORK_LABELS: Record<Framework, string> = {
 	gin: 'Gin',
@@ -21,6 +21,7 @@ export const FRAMEWORK_LABELS: Record<Framework, string> = {
 	express: 'Express',
 	remix: 'Remix',
 	jquery: 'jQuery',
+	'react-native': 'React Native',
 	hono: 'Hono',
 	cloudflare: 'Cloudflare',
 	opentelemetry: 'OpenTelemetry',

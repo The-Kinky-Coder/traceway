@@ -23,7 +23,7 @@
     <img src="/fasthttp.png" alt="FastHTTP" class={className} />
 {:else if framework === 'stdlib'}
     <img src="/stdlib.png" alt="Standard Library" class={className} />
-{:else if framework === 'react'}
+{:else if framework === 'react' || framework === 'react-native'}
     <svg class={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="8" cy="8" r="1.5" fill="#61DAFB"/>
         <ellipse cx="8" cy="8" rx="6.5" ry="2.5" stroke="#61DAFB" stroke-width="0.8" fill="none"/>

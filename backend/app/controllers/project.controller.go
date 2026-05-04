@@ -34,6 +34,7 @@ var validFrameworks = map[string]bool{
 	"express": true,
 	"remix":          true,
 	"jquery":         true,
+	"react-native":   true,
 	"hono":           true,
 	"cloudflare":     true,
 	"opentelemetry":  true,
@@ -89,7 +90,7 @@ func (p projectController) CreateProject(c *gin.Context) {
 
 	if !validFrameworks[request.Framework] {
 		traceway.CaptureMessage("Invalid framework received: " + request.Framework)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Framework must be one of: gin, fiber, chi, fasthttp, stdlib, custom, react, svelte, vuejs, jquery, hono, cloudflare, opentelemetry, symfony, flutter, android"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Framework must be one of: gin, fiber, chi, fasthttp, stdlib, custom, react, svelte, vuejs, jquery, react-native, hono, cloudflare, opentelemetry, symfony, flutter, android"})
 		return
 	}
 

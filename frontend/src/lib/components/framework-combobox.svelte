@@ -28,6 +28,7 @@
         { value: 'stdlib', label: 'Standard Library', description: 'net/http package', group: 'Go' },
         { value: 'custom', label: 'Custom', description: 'Other / manual setup', group: 'Go' },
         { value: 'react', label: 'React', description: 'Frontend UI library', group: 'JavaScript' },
+        { value: 'react-native', label: 'React Native', description: 'React Native and Expo apps', group: 'JavaScript' },
         { value: 'svelte', label: 'Svelte', description: 'Frontend compiler framework', group: 'JavaScript' },
         { value: 'vuejs', label: 'Vue.js', description: 'Progressive frontend framework', group: 'JavaScript' },
         { value: 'jquery', label: 'jQuery', description: 'Legacy-friendly AJAX and DOM library', group: 'JavaScript' },

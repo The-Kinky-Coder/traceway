@@ -30,6 +30,8 @@ export function getInstallCommand(framework: Framework): string {
 			return 'npm install @tracewayapp/remix';
 		case 'jquery':
 			return 'npm install @tracewayapp/jquery';
+		case 'react-native':
+			return 'npm install @tracewayapp/react-native';
 		case 'hono':
 			return '';
 		case 'symfony':
@@ -221,6 +223,22 @@ init("${connectionString}");
 
 // jQuery AJAX errors are captured automatically
 // Distributed trace headers are injected into $.ajax() requests`;
+
+		case 'react-native':
+			return `import { TracewayProvider, TracewayErrorBoundary } from "@tracewayapp/react-native";
+
+export default function App() {
+  return (
+    <TracewayProvider
+      connectionString="${connectionString}"
+      options={{ version: "1.0.0" }}
+    >
+      <TracewayErrorBoundary fallback={<CrashScreen />}>
+        <RootNavigator />
+      </TracewayErrorBoundary>
+    </TracewayProvider>
+  );
+}`;
 
 		case 'symfony':
 			return `<?php
@@ -415,6 +433,12 @@ captureException(new Error("Test error"));`;
 				return `import { captureException } from "@tracewayapp/jquery";
 
 captureException(new Error("Test error"));`;
+			case 'react-native':
+				return `import { useTraceway } from "@tracewayapp/react-native";
+
+// In a component using the hook
+const { captureException } = useTraceway();
+captureException(new Error("Test error"));`;
 			default:
 				return `import { captureException } from "@tracewayapp/${getPackageName(framework)}";
 
@@ -436,6 +460,7 @@ function getPackageName(framework: Framework): string {
 		case 'express': return 'express';
 		case 'remix': return 'remix';
 		case 'jquery': return 'jquery';
+		case 'react-native': return 'react-native';
 		default: return 'react';
 	}
 }
@@ -456,6 +481,7 @@ export function getFrameworkLabel(framework: Framework): string {
 		express: 'Express',
 		remix: 'Remix',
 		jquery: 'jQuery',
+		'react-native': 'React Native',
 		hono: 'Hono',
 		cloudflare: 'Cloudflare',
 		opentelemetry: 'OpenTelemetry',
