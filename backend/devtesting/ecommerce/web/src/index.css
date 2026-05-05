@@ -1,0 +1,289 @@
+:root {
+  --bg: #fafaf7;
+  --ink: #1a1a1a;
+  --ink-2: #4a4a4a;
+  --ink-3: #8a8a8a;
+  --hair: #e6e3dc;
+  --accent: #1a1a1a;
+  --crit: #c1432e;
+  --ok: #2f7a3a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font: inherit;
+  background: var(--ink);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+button:hover {
+  background: #333;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hair);
+}
+
+button.ghost:hover {
+  background: white;
+}
+
+input[type="text"],
+input[type="number"] {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: white;
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  border-color: var(--ink);
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 64px;
+}
+
+header.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--hair);
+  margin-bottom: 40px;
+}
+
+header.nav .brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 22px;
+}
+
+header.nav nav {
+  display: flex;
+  gap: 8px;
+}
+
+header.nav nav a {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+header.nav nav a.active {
+  background: var(--ink);
+  color: white;
+}
+
+header.nav .cart-pill {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+h1 {
+  font-size: 36px;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+h2 {
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  margin: 0 0 18px;
+}
+
+p.lead {
+  font-size: 17px;
+  color: var(--ink-2);
+  max-width: 540px;
+  line-height: 1.55;
+  margin: 0 0 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.card:hover {
+  border-color: var(--ink);
+}
+
+.card .name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.card .desc {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.card .price {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: auto;
+}
+
+.card.flagged {
+  border-color: #d4a017;
+  background: #fffaef;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.row:last-child {
+  border: none;
+}
+
+.row .qty {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.row .price {
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--ink-3);
+}
+
+.banner {
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  background: #fff8e1;
+  border: 1px solid #f0d488;
+  color: #6e5912;
+}
+
+.banner.error {
+  background: #fdecea;
+  border-color: #e6a99e;
+  color: var(--crit);
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.promo-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.promo-row input {
+  flex: 1;
+}
+
+.summary {
+  margin-top: 32px;
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+}
+
+.summary .total-row {
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair);
+}
+
+.summary .sub-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 4px 0;
+}
+
+footer.foot {
+  border-top: 1px solid var(--hair);
+  padding: 24px 0;
+  margin-top: 64px;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+}
