@@ -35,6 +35,12 @@ app.mount("#app");
 | `version` | `string` | `undefined` | Your application version |
 | `ignoreErrors` | `Array<string \| RegExp>` | `DEFAULT_IGNORE_PATTERNS` | Error patterns to ignore. Pass `[]` to capture all errors. See [Error Filtering](/client/js-sdk/initialization#error-filtering) |
 | `beforeCapture` | `(exception) => boolean` | `undefined` | Return `false` to suppress an error. See [Error Filtering](/client/js-sdk/initialization#error-filtering) |
+| `sessionRecording` | `boolean` | `true` | Enable the rrweb session recorder |
+| `sessionRecordingSegmentDuration` | `number` | `30000` | rrweb segment length in ms |
+| `recordAllSessions` | `boolean` | `false` | Always-on session recording. See [Sessions](/learn/sessions) |
+| `captureLogs` | `boolean` | `true` | Mirror `console.*` calls into the rolling log buffer |
+| `captureNetwork` | `boolean` | `true` | Record `fetch` / `XHR` calls as network actions |
+| `captureNavigation` | `boolean` | `true` | Record History API push / replace / pop transitions |
 
 ## Full Example
 
@@ -99,6 +105,29 @@ app.use(createTracewayPlugin({
   },
 }));
 ```
+
+## Custom Attributes
+
+Attach app-level identifiers (`userId`, `tenant`, feature flags, etc.) to every session and exception using the imperative scope API. Drive it from `watchEffect` so it tracks reactive state:
+
+```vue
+<script setup>
+import { watchEffect } from "vue";
+import { setAttributes, clearAttributes } from "@tracewayapp/vue";
+import { useUser } from "./auth";
+
+const { user, org } = useUser();
+watchEffect(() => {
+  if (user.value && org.value) {
+    setAttributes({ userId: user.value.id, tenant: org.value.id });
+  } else {
+    clearAttributes();
+  }
+});
+</script>
+```
+
+The full API (`setAttribute`, `setAttributes`, `removeAttribute`, `clearAttributes`) is re-exported from `@tracewayapp/vue`. Layering on each event: **defaults < global scope < per-call**. See [Sessions](/learn/sessions) for the full attribute model.
 
 ## Manual Injection
 

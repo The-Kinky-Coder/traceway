@@ -34,6 +34,45 @@ function App() {
 | `version` | `string` | `undefined` | Your application version |
 | `ignoreErrors` | `Array<string \| RegExp>` | `DEFAULT_IGNORE_PATTERNS` | Error patterns to ignore. Pass `[]` to capture all errors. See [Error Filtering](/client/js-sdk/initialization#error-filtering) |
 | `beforeCapture` | `(exception) => boolean` | `undefined` | Return `false` to suppress an error. See [Error Filtering](/client/js-sdk/initialization#error-filtering) |
+| `sessionRecording` | `boolean` | `true` | Enable the rrweb session recorder |
+| `sessionRecordingSegmentDuration` | `number` | `30000` | rrweb segment length in ms |
+| `recordAllSessions` | `boolean` | `false` | Always-on session recording. See [Sessions](/learn/sessions) |
+| `captureLogs` | `boolean` | `true` | Mirror `console.*` calls into the rolling log buffer |
+| `captureNetwork` | `boolean` | `true` | Record `fetch` / `XHR` calls as network actions |
+| `captureNavigation` | `boolean` | `true` | Record History API push / replace / pop transitions |
+| `eventsWindowMs` | `number` | `10000` (`30000` w/ `recordAllSessions`) | Rolling log/action buffer window |
+| `eventsMaxCount` | `number` | `200` (`600` w/ `recordAllSessions`) | Hard cap on log/action buffer entries |
+
+## Custom Attributes
+
+Use `<TracewayAttributes>` or the `useTracewayAttributes` hook to bind a reactive map of attributes (`userId`, `tenant`, feature flags, etc.) to the SDK's global scope. The hook diffs against the previous map on every render and pushes only the deltas; on unmount, every key it currently owns is removed.
+
+```jsx
+import { TracewayAttributes, useTracewayAttributes } from "@tracewayapp/react";
+
+// As a component:
+<TracewayAttributes attributes={user ? { userId: user.id, tenant: org.id } : null} />
+
+// Or as a hook:
+function App() {
+  useTracewayAttributes({ userId: user?.id, tenant: org?.id });
+  return <Routes />;
+}
+```
+
+Both accept `null` / `undefined` as "empty map" — useful while user data loads or after logout. New object reference with the same content does not trigger SDK calls.
+
+For imperative use (background workers, init scripts), the same primitives are exported as plain functions:
+
+```javascript
+import { setAttribute, setAttributes, removeAttribute, clearAttributes } from "@tracewayapp/react";
+
+setAttribute("build_channel", import.meta.env.VITE_CHANNEL ?? "dev");
+setAttributes({ tenant: "acme", plan: "pro" });
+clearAttributes(); // on logout
+```
+
+Layering on each event: **defaults < global scope < per-call**. See [Sessions](/learn/sessions) for the full attribute model.
 
 ## Example with Options
 

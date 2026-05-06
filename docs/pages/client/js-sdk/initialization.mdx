@@ -32,6 +32,14 @@ init("your-token@https://traceway.example.com/api/report", {
 | `version` | `string` | `undefined` | Your application version (shown in Traceway dashboard) |
 | `ignoreErrors` | `Array<string \| RegExp>` | `DEFAULT_IGNORE_PATTERNS` | Patterns to filter out errors before capture. See [Error Filtering](#error-filtering) |
 | `beforeCapture` | `(exception) => boolean` | `undefined` | Callback to programmatically suppress errors. Return `false` to drop. See [Error Filtering](#error-filtering) |
+| `sessionRecording` | `boolean` | `true` | Enable the rrweb session recorder. Required for both per-exception clips and always-on session recording |
+| `sessionRecordingSegmentDuration` | `number` | `30000` | Length of each rrweb segment in milliseconds. Always-on recording uploads one row per segment, so a longer value means fewer rows and S3 reads at the cost of replay granularity |
+| `recordAllSessions` | `boolean` | `false` | Always-on session recording — upload every segment continuously and create a parent `sessions` row, not just exception-bound clips. See [Sessions](/learn/sessions) for the full feature |
+| `captureLogs` | `boolean` | `true` | Mirror `console.{debug,log,info,warn,error}` into the rolling log buffer that ships with each clip / segment |
+| `captureNetwork` | `boolean` | `true` | Record `fetch` and `XMLHttpRequest` calls as network actions |
+| `captureNavigation` | `boolean` | `true` | Record History API push / replace / pop transitions as navigation actions |
+| `eventsWindowMs` | `number` | `10000` (`30000` w/ `recordAllSessions`) | Rolling window the log/action buffers retain |
+| `eventsMaxCount` | `number` | `200` (`600` w/ `recordAllSessions`) | Hard cap on entries kept independently in the log and action buffers |
 
 ## Auto-Capture Behavior
 
@@ -137,6 +145,29 @@ init("your-token@https://traceway.example.com/api/report", {
   debug: process.env.NODE_ENV === "development",
 });
 ```
+
+## Custom Attributes (Global Scope)
+
+The SDK auto-collects browser context (`url`, `userAgent`, `viewport`, etc.) on every session and exception. To attach app-level identifiers — `userId`, `tenant`, feature flags — call the imperative scope API once and they ride along every subsequent event:
+
+```javascript
+import {
+  setAttribute,
+  setAttributes,
+  removeAttribute,
+  clearAttributes,
+} from "@tracewayapp/frontend";
+
+setAttribute("userId", "u_42");
+setAttributes({ tenant: "acme", plan: "pro" });
+
+// On logout / tenant switch:
+clearAttributes();
+```
+
+Layering on each event: **defaults < global scope < per-call**. `captureExceptionWithAttributes(err, { … })` still wins over global keys for the specific exception.
+
+If `recordAllSessions: true` is on, calling `setAttribute*` mid-session also pushes a refresh upsert so the live session row picks up the new attributes immediately rather than waiting for close. See [Sessions](/learn/sessions) for the full attribute model.
 
 ## Multiple Environments
 

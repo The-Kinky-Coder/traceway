@@ -8,7 +8,7 @@ This document is the complete protocol specification for the Traceway `/api/repo
 POST /api/report
 ```
 
-A single endpoint accepts all telemetry data: **traces** (endpoints and tasks), **exceptions** (errors and messages), and **metrics**.
+A single endpoint accepts all telemetry data: **traces** (endpoints and tasks), **exceptions** (errors and messages), **metrics**, and (for browser SDKs) **sessions** with **session recordings**.
 
 ## Authentication
 
@@ -50,7 +50,7 @@ Parse by splitting on the first `@`:
 
 ### Gzip Requirement
 
-The request body **must** be gzip-compressed JSON. The backend checks for the `Content-Encoding: gzip` header and returns `400 Bad Request` if it is missing. The body is decompressed server-side before JSON parsing.
+The request body **should** be gzip-compressed JSON for the regular sync path. The backend's gzip middleware decompresses when `Content-Encoding: gzip` is present and passes the body through unchanged when it is absent. Browser SDKs use the uncompressed path on the page-unload (`pagehide`) flush so the request can dispatch synchronously inside the unload handler — `CompressionStream` is async and would yield control before the request leaves. Servers MUST therefore accept both compressed and uncompressed JSON on `/api/report`.
 
 ## Request Payload
 
@@ -78,7 +78,9 @@ Each frame is a batch of data collected during one collection interval.
 {
   "stackTraces": [ ... ],
   "metrics": [ ... ],
-  "traces": [ ... ]
+  "traces": [ ... ],
+  "sessions": [ ... ],
+  "sessionRecordings": [ ... ]
 }
 ```
 
@@ -87,8 +89,10 @@ Each frame is a batch of data collected during one collection interval.
 | `stackTraces` | `ExceptionStackTrace[]` | Yes | Array of exception/message records |
 | `metrics` | `MetricRecord[]` | Yes | Array of metric data points |
 | `traces` | `Trace[]` | Yes | Array of endpoint and task traces |
+| `sessions` | `Session[]` | No | Browser SDKs only: session-lifecycle markers (open / refresh / close). Omit for non-browser SDKs |
+| `sessionRecordings` | `SessionRecording[]` | No | Browser SDKs only: rrweb segment uploads. Omit when there is nothing to ship |
 
-All three arrays should be present. Use empty arrays `[]` or `null` when there is no data of that type.
+All five fields are accepted. Use empty arrays `[]` or `null` (or omit entirely) when there is no data of that type.
 
 ## Traces
 
@@ -279,6 +283,125 @@ SDKs can send any `name`/`value` pair. There is no registry — any string name 
 ```json
 { "name": "queue.length", "value": 42.0, "recordedAt": "2025-01-15T10:30:00Z" }
 ```
+
+## Sessions
+
+A **session** represents one user's continuous interaction with a browser app — typically the lifetime of an open tab. Sessions are emitted only by browser SDKs that have **always-on session recording** enabled (`recordAllSessions: true`); back-end and mobile SDKs omit the `sessions` and `sessionRecordings` fields entirely.
+
+The session row is upserted on the backend (keyed by `id`), so the same session can be emitted multiple times during its lifetime — each emission overwrites mutable fields (`endedAt`, `duration`, `attributes`). The shape is identical for the open, mid-session refresh, and close payloads; only the populated fields differ.
+
+### Session Object
+
+```json
+{
+  "id": "8a1f0b3c-2e7a-4f1d-9bd4-71e6c8a2b5d0",
+  "startedAt": "2026-05-06T14:02:00.000Z",
+  "endedAt": "2026-05-06T14:23:17.412Z",
+  "clientIP": "",
+  "attributes": {
+    "url": "https://app.example.com/dashboard",
+    "userAgent": "Mozilla/5.0 ...",
+    "viewport": "1920x1080",
+    "userId": "u_42",
+    "tenant": "acme"
+  },
+  "distributedTraceId": ""
+}
+```
+
+| Field | JSON Key | Type | Required | Description |
+|-------|----------|------|----------|-------------|
+| Id | `id` | `string` | Yes | UUID v4. Generated client-side at session start; persistent for the page lifecycle. The backend uses this directly as the session row id |
+| StartedAt | `startedAt` | `string` | Yes | RFC 3339 timestamp of session start |
+| EndedAt | `endedAt` | `string \| null` | No | RFC 3339 timestamp of session end. Omitted on the opening payload; populated on the close payload |
+| ClientIP | `clientIP` | `string` | No | Optional client-side hint. The backend stamps the request's IP into `attributes["client.ip"]` regardless |
+| Attributes | `attributes` | `object` | No | Key-value pairs (auto-collected browser context + caller-provided global scope) |
+| DistributedTraceId | `distributedTraceId` | `string` | No | Optional UUID linking the session to a distributed trace |
+
+### Session Lifecycle (browser SDKs)
+
+A new session begins on:
+
+1. SDK init when `recordAllSessions: true` and a browser context is available.
+2. Page restore from bfcache (`pageshow` with `event.persisted === true`) — a fresh `id` is generated and the previous session row is left as-is.
+
+A session ends on:
+
+1. **Inactivity timeout** — 15 min since the last DOM event observed by rrweb (or the last `markActivity()` call).
+2. **Maximum duration** — 60 min from `startedAt`.
+3. **Page unload** — `pagehide` triggers a final flush and end.
+
+The closing payload is sent via `fetch(..., { keepalive: true })` with raw JSON (no gzip) so it dispatches synchronously inside the `pagehide` handler.
+
+### Auto-collected Attributes
+
+Browser SDKs stamp these on every session at open and close (caller-provided keys via `setAttribute*` win on collision):
+
+| Key | Source |
+|---|---|
+| `url` | `window.location.href` |
+| `path` | `window.location.pathname` |
+| `referrer` | `document.referrer` |
+| `userAgent` | `navigator.userAgent` |
+| `language` | `navigator.language` |
+| `platform` | `navigator.platform` |
+| `viewport` | `${window.innerWidth}x${window.innerHeight}` |
+| `screen` | `${screen.width}x${screen.height}` |
+| `timezone` | `Intl.DateTimeFormat().resolvedOptions().timeZone` |
+| `client.ip` | Stamped server-side from the request's `RemoteAddr` |
+
+## Session Recordings
+
+Session recordings carry the actual replay data. Each recording is **one segment** — typically ~30 s of rrweb events. A session is reassembled at view time by ordering all of its recordings by `segmentIndex`.
+
+A recording can be **session-bound** (always-on path), **exception-bound** (legacy, when an exception is captured), or both at once when an exception fires inside an always-on segment.
+
+### SessionRecording Object
+
+```json
+{
+  "exceptionId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "sessionId": "8a1f0b3c-2e7a-4f1d-9bd4-71e6c8a2b5d0",
+  "segmentIndex": 4,
+  "events": [ /* rrweb event objects */ ],
+  "logs": [ /* console output entries */ ],
+  "actions": [ /* fetch / navigation / custom breadcrumbs */ ],
+  "startedAt": "2026-05-06T14:14:00.000Z",
+  "endedAt": "2026-05-06T14:14:30.000Z"
+}
+```
+
+| Field | JSON Key | Type | Required | Description |
+|-------|----------|------|----------|-------------|
+| ExceptionId | `exceptionId` | `string` | No | UUID linking the recording to a specific exception. Set on exception-bound clips; omitted for pure always-on segments |
+| SessionId | `sessionId` | `string` | No | UUID linking the recording to a parent session. Set on always-on segments; omitted for legacy exception-bound clips |
+| SegmentIndex | `segmentIndex` | `integer` | No | Monotonically increasing per-session counter starting at 0. Omitted (defaults to 0) for exception-bound clips |
+| Events | `events` | `array` | Yes | rrweb event array (DOM mutations, input events, mouse moves) |
+| Logs | `logs` | `array` | No | Console output entries captured in the segment window |
+| Actions | `actions` | `array` | No | Network / navigation / custom breadcrumbs captured in the segment window |
+| StartedAt | `startedAt` | `string` | No | RFC 3339 timestamp of the first event in the segment |
+| EndedAt | `endedAt` | `string` | No | RFC 3339 timestamp of the last event in the segment |
+
+The backend stores each recording as a row in `session_recordings` with the events bytes written to S3 (or a configured object store). At least one of `exceptionId` or `sessionId` must be set — recordings with neither linkage are dropped.
+
+## Exception ↔ Session Linking
+
+`ExceptionStackTrace` gains an optional `sessionId` field. Browser SDKs running with `recordAllSessions: true` stamp every exception with the current session id, so the dashboard can render a "View full session" link from the issue page even when the per-exception clip is the inline replay.
+
+```json
+{
+  "stackTrace": "...",
+  "recordedAt": "2026-05-06T14:14:23.000Z",
+  "sessionId": "8a1f0b3c-2e7a-4f1d-9bd4-71e6c8a2b5d0",
+  "isMessage": false
+}
+```
+
+| Field | JSON Key | Type | Required | Description |
+|-------|----------|------|----------|-------------|
+| SessionId | `sessionId` | `string \| null` | No | UUID of the parent session. Omitted when no session is active or when `recordAllSessions` is off |
+
+The legacy `sessionRecordingId` field still works for exception-bound clips. Both can be set on a single exception captured inside an always-on session.
 
 ## Batching and Collection Strategy
 

@@ -43,6 +43,12 @@ Must be called during component initialization (not in an event handler):
 | `version` | `string` | `undefined` | Your application version |
 | `ignoreErrors` | `Array<string \| RegExp>` | `DEFAULT_IGNORE_PATTERNS` | Error patterns to ignore. Pass `[]` to capture all errors. See [Error Filtering](/client/js-sdk/initialization#error-filtering) |
 | `beforeCapture` | `(exception) => boolean` | `undefined` | Return `false` to suppress an error. See [Error Filtering](/client/js-sdk/initialization#error-filtering) |
+| `sessionRecording` | `boolean` | `true` | Enable the rrweb session recorder |
+| `sessionRecordingSegmentDuration` | `number` | `30000` | rrweb segment length in ms |
+| `recordAllSessions` | `boolean` | `false` | Always-on session recording. See [Sessions](/learn/sessions) |
+| `captureLogs` | `boolean` | `true` | Mirror `console.*` calls into the rolling log buffer |
+| `captureNetwork` | `boolean` | `true` | Record `fetch` / `XHR` calls as network actions |
+| `captureNavigation` | `boolean` | `true` | Record History API push / replace / pop transitions |
 
 ## getTraceway
 
@@ -121,6 +127,44 @@ Child component:
   <button type="submit">Submit</button>
 </form>
 ```
+
+## Custom Attributes
+
+Use `useTracewayAttributes` to bind a reactive map of attributes (`userId`, `tenant`, feature flags, etc.) to the SDK's global scope. It's a factory: call it once during component setup, then invoke the returned setter from `$effect` (Svelte 5) or `$:` (Svelte 4). The setter diffs against the last map and pushes only the deltas; `onDestroy` removes every key it currently owns.
+
+```svelte
+<!-- Svelte 5 -->
+<script>
+  import { useTracewayAttributes } from "@tracewayapp/svelte";
+  let { user, org } = $props();
+  const sync = useTracewayAttributes();
+  $effect(() => sync({ userId: user.id, tenant: org.id }));
+</script>
+```
+
+```svelte
+<!-- Svelte 4 -->
+<script>
+  import { useTracewayAttributes } from "@tracewayapp/svelte";
+  export let user; export let org;
+  const sync = useTracewayAttributes();
+  $: sync({ userId: user.id, tenant: org.id });
+</script>
+```
+
+The setter accepts `null` / `undefined` as "empty map" — useful while user data loads or after logout.
+
+For imperative use (load functions, hooks), the same primitives are exported as plain functions:
+
+```javascript
+import { setAttribute, setAttributes, removeAttribute, clearAttributes } from "@tracewayapp/svelte";
+
+setAttribute("build_channel", "canary");
+setAttributes({ tenant: "acme", plan: "pro" });
+clearAttributes(); // on logout
+```
+
+Layering on each event: **defaults < global scope < per-call**. See [Sessions](/learn/sessions) for the full attribute model.
 
 ## TRACEWAY_KEY
 
