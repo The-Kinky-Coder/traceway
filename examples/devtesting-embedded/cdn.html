@@ -39,7 +39,9 @@
     <div id="log">Waiting for actions...</div>
 
     <script>
-    TracewayJQuery.init("frontend-dev-token@http://localhost:8082/api/report");
+    TracewayJQuery.init("frontend-dev-token@http://localhost:8082/api/report", {
+        recordAllSessions: true,
+    });
 
     function addLog(msg) {
         var time = new Date().toLocaleTimeString();

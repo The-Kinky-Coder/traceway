@@ -19,6 +19,7 @@ type ExceptionStackTrace struct {
 	ServerName         string            `json:"serverName" ch:"server_name"`
 	IsMessage          bool              `json:"isMessage" ch:"is_message"`
 	DistributedTraceId *uuid.UUID        `json:"distributedTraceId,omitempty" ch:"distributed_trace_id"`
+	SessionId          *uuid.UUID        `json:"sessionId,omitempty" ch:"session_id"`
 }
 
 type ExceptionTrendPoint struct {

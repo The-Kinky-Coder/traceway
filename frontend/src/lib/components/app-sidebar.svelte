@@ -9,6 +9,7 @@
 		ChartNoAxesCombined,
 		ChartNoAxesGantt,
 		FileText,
+		Film,
 		Gauge,
 		ListEnd,
 		Settings,
@@ -31,6 +32,10 @@
 
 	const hiddenForFrontend = new Set(['Dashboard', 'Logs', 'Endpoints', 'Tasks', 'Metrics', 'AI Traces']);
 	const hiddenForCloudflare = new Set(['Metrics']);
+	// Items that only make sense for frontend (browser) projects — dropped from
+	// the sidebar for any other framework, so a Go backend project doesn't
+	// surface a Sessions tab that can never be populated.
+	const frontendOnly = new Set(['Sessions']);
 
 	const allSidebarItems: SidebarItem[] = [
 		{ Icon: LayoutDashboard, href: '/', title: 'Dashboard', stickyParams: [] },
@@ -38,6 +43,7 @@
 		{ Icon: FileText, href: '/logs', title: 'Logs', stickyParams: ['preset', 'from', 'to'] },
 		{ Icon: Gauge, href: '/endpoints', title: 'Endpoints', stickyParams: ['preset', 'from', 'to'] },
 		{ Icon: ListEnd, href: '/tasks', title: 'Tasks', stickyParams: ['preset', 'from', 'to'] },
+		{ Icon: Film, href: '/sessions', title: 'Sessions', stickyParams: ['preset', 'from', 'to'] },
 		{ Icon: Workflow, href: '/ai-traces', title: 'AI Traces', stickyParams: ['preset', 'from', 'to'] },
 		{
 			Icon: ChartNoAxesCombined,
@@ -53,8 +59,8 @@
 		projectsState.currentProject && isFrontendFramework(projectsState.currentProject.framework)
 			? allSidebarItems.filter((item) => !hiddenForFrontend.has(item.title))
 			: projectsState.currentProject && isCloudflareFramework(projectsState.currentProject.framework)
-				? allSidebarItems.filter((item) => !hiddenForCloudflare.has(item.title))
-				: allSidebarItems
+				? allSidebarItems.filter((item) => !hiddenForCloudflare.has(item.title) && !frontendOnly.has(item.title))
+				: allSidebarItems.filter((item) => !frontendOnly.has(item.title))
 	);
 
 	const allSidebarItemsBottom: SidebarItem[] = [

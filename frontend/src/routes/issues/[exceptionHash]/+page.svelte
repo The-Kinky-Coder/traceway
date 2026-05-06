@@ -28,6 +28,7 @@
 	let total = $state(0);
 	let linkedTrace = $state<LinkedTrace | null>(null);
 	let sessionRecording = $state<SessionRecording | null>(null);
+	let sessionId = $state<string | null>(null);
 	let showArchiveDialog = $state(false);
 	let archiving = $state(false);
 
@@ -43,6 +44,7 @@
 		notFound = false;
 		linkedTrace = null;
 		sessionRecording = null;
+		sessionId = null;
 
 		try {
 			const exceptionHash = page.params.exceptionHash;
@@ -61,6 +63,7 @@
 			occurrences = response.occurrences || [];
 			total = response.pagination.total;
 			sessionRecording = response.sessionRecording ?? null;
+			sessionId = response.sessionId ?? null;
 
 			// Load linked trace if the latest occurrence has a traceId
 			const firstOccurrence = occurrences[0];
@@ -172,6 +175,7 @@
 				occurrence={latestOccurrence}
 				{linkedTrace}
 				{sessionRecording}
+				{sessionId}
 				title="Last Event"
 				description="Details from the most recent occurrence of this exception"
 			/>

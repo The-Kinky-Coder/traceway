@@ -19,7 +19,7 @@ import (
 type exceptionStackTraceRepository struct{}
 
 func (e *exceptionStackTraceRepository) InsertAsync(ctx context.Context, lines []models.ExceptionStackTrace) error {
-	batch, err := chdb.Conn.PrepareBatch(clickhouse.Context(context.Background(), clickhouse.WithAsync(false)), "INSERT INTO exception_stack_traces (id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id)")
+	batch, err := chdb.Conn.PrepareBatch(clickhouse.Context(context.Background(), clickhouse.WithAsync(false)), "INSERT INTO exception_stack_traces (id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id)")
 	if err != nil {
 		return err
 	}
@@ -38,11 +38,59 @@ func (e *exceptionStackTraceRepository) InsertAsync(ctx context.Context, lines [
 		if traceType == "" {
 			traceType = "endpoint"
 		}
-		if err := batch.Append(est.Id, est.ProjectId, est.TraceId, traceType, est.ExceptionHash, est.StackTrace, est.RecordedAt, attributesJSON, est.AppVersion, est.ServerName, isMessage, est.DistributedTraceId); err != nil {
+		if err := batch.Append(est.Id, est.ProjectId, est.TraceId, traceType, est.ExceptionHash, est.StackTrace, est.RecordedAt, attributesJSON, est.AppVersion, est.ServerName, isMessage, est.DistributedTraceId, est.SessionId); err != nil {
 			return err
 		}
 	}
 	return batch.Send()
+}
+
+// FindAllBySessionId returns all exceptions/messages stamped with the given session_id.
+func (e *exceptionStackTraceRepository) FindAllBySessionId(ctx context.Context, projectId, sessionId uuid.UUID) ([]models.ExceptionStackTrace, error) {
+	rows, err := chdb.Conn.Query(ctx,
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
+			FROM exception_stack_traces
+			WHERE project_id = ? AND session_id = ?
+			ORDER BY recorded_at ASC`,
+		projectId, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []models.ExceptionStackTrace
+	for rows.Next() {
+		var est models.ExceptionStackTrace
+		var attributesJSON string
+		var isMessage uint8
+		if err := rows.Scan(&est.Id, &est.ProjectId, &est.TraceId, &est.TraceType, &est.ExceptionHash, &est.StackTrace,
+			&est.RecordedAt, &attributesJSON, &est.AppVersion, &est.ServerName, &isMessage, &est.DistributedTraceId, &est.SessionId); err != nil {
+			return nil, err
+		}
+		est.IsMessage = isMessage == 1
+		if attributesJSON != "" && attributesJSON != "{}" {
+			if err := json.Unmarshal([]byte(attributesJSON), &est.Attributes); err != nil {
+				est.Attributes = nil
+			}
+		}
+		results = append(results, est)
+	}
+	return results, nil
+}
+
+// GetSessionIdForException returns the session_id for the given exception, or nil when not linked.
+func (e *exceptionStackTraceRepository) GetSessionIdForException(ctx context.Context, projectId, exceptionId uuid.UUID) (*uuid.UUID, error) {
+	var sessionId *uuid.UUID
+	err := chdb.Conn.QueryRow(ctx,
+		"SELECT session_id FROM exception_stack_traces WHERE project_id = ? AND id = ? LIMIT 1",
+		projectId, exceptionId).Scan(&sessionId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return sessionId, nil
 }
 
 func (e *exceptionStackTraceRepository) CountBetween(ctx context.Context, projectId uuid.UUID, start, end time.Time) (int64, error) {

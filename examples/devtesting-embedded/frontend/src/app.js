@@ -1,6 +1,31 @@
-import { init } from "@tracewayapp/jquery";
+import {
+  init,
+  setAttribute,
+  setAttributes,
+} from "@tracewayapp/jquery";
 
-init("frontend-dev-token@http://localhost:8082/api/report");
+init("frontend-dev-token@http://localhost:8082/api/report", {
+  recordAllSessions: true,
+});
+
+// Pretend we just resolved the user / tenant context after auth and
+// stamped some app-level globals onto the Traceway scope. These attach to
+// every session this tab opens and to every exception captured below,
+// alongside the auto-collected url / userAgent / viewport / etc.
+setAttributes({
+  userId: "u_42",
+  tenant: "acme-corp",
+  plan: "pro",
+  build_channel: "canary",
+});
+
+// Pick a per-session experiment bucket so we can demonstrate filter-by-attribute
+// on the Sessions page. Random for variety; in a real app this'd be the actual
+// flag value.
+setAttribute(
+  "experiment.cart_redesign",
+  Math.random() < 0.5 ? "control" : "variant_b",
+);
 
 function addLog(msg) {
   var time = new Date().toLocaleTimeString();

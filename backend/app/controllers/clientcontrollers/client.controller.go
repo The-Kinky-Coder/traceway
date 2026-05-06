@@ -82,11 +82,16 @@ func (e clientController) Report(c *gin.Context) {
 	exceptionStackTraceToInsert := []models.ExceptionStackTrace{}
 	metricPointsToInsert := []models.MetricPoint{}
 	spansToInsert := []models.Span{}
+	sessionsToUpsert := []models.Session{}
 
 	type recordingWork struct {
-		Id          uuid.UUID
-		ProjectId   uuid.UUID
-		ExceptionId uuid.UUID
+		Id           uuid.UUID
+		ProjectId    uuid.UUID
+		ExceptionId  uuid.UUID
+		SessionId    *uuid.UUID
+		SegmentIndex int32
+		// Key is the S3 object key the body is written to.
+		Key string
 		// Body is the marshaled JSON of the entire ClientSessionRecording
 		// sub-document — events + logs + actions + startedAt/endedAt — exactly
 		// as it lands in S3. App console logs in `logs` are intentionally not
@@ -96,11 +101,30 @@ func (e clientController) Report(c *gin.Context) {
 	}
 	var recordingsWork []recordingWork
 
-	// Map frontend sessionRecordingId → backend-generated exception UUID
+	// Map frontend sessionRecordingId → backend-generated exception UUID.
+	// Used only for the legacy exception-bound recording path; the always-on
+	// session linkage uses the SDK-supplied sessionId UUID directly (it IS
+	// the session row id by design, so no in-request map is needed).
 	recordingIdToExceptionId := map[string]uuid.UUID{}
 
 	convertSpan := traceway.StartSpan(c, "report.convert_frames")
 	for _, cf := range request.CollectionFrames {
+		for _, cs := range cf.Sessions {
+			s := cs.ToSession(request.AppVersion, request.ServerName)
+			s.ProjectId = projectId
+			// The SDK can't see the public-facing IP; we stamp it server-side
+			// into the attributes blob so the dashboard surfaces it alongside
+			// browser/url/viewport collected by the SDK.
+			if clientIP := c.ClientIP(); clientIP != "" {
+				if s.Attributes == nil {
+					s.Attributes = map[string]string{}
+				}
+				s.Attributes["client.ip"] = clientIP
+				s.ClientIP = clientIP
+			}
+			sessionsToUpsert = append(sessionsToUpsert, s)
+		}
+
 		for _, ct := range cf.Traces {
 			if ct.IsTask {
 				t := ct.ToTask(request.AppVersion, request.ServerName)
@@ -157,6 +181,15 @@ func (e clientController) Report(c *gin.Context) {
 			if cst.SessionRecordingId != nil {
 				recordingIdToExceptionId[*cst.SessionRecordingId] = est.Id
 			}
+			// The SDK-provided session UID is the session row id by design, so
+			// parse it directly. The parent `sessions` row may have been
+			// upserted in an earlier request — we don't require it in this
+			// batch.
+			if cst.SessionId != nil {
+				if parsed, err := uuid.Parse(*cst.SessionId); err == nil {
+					est.SessionId = &parsed
+				}
+			}
 			exceptionStackTraceToInsert = append(exceptionStackTraceToInsert, est)
 		}
 		resolveSpan.End()
@@ -168,13 +201,25 @@ func (e clientController) Report(c *gin.Context) {
 		}
 
 		for _, sr := range cf.SessionRecordings {
-			exceptionId, ok := recordingIdToExceptionId[sr.ExceptionId]
-			if !ok {
+			// A recording can be exception-bound (legacy path), session-bound
+			// (always-on path), or both. Exception linkage requires the
+			// exception to be in this batch; session linkage doesn't, since
+			// the SDK-provided sessionId is the session row id by design.
+			var exceptionId uuid.UUID
+			if sr.ExceptionId != "" {
+				if id, ok := recordingIdToExceptionId[sr.ExceptionId]; ok {
+					exceptionId = id
+				}
+			}
+			var sessionPtr *uuid.UUID
+			if sr.SessionId != "" {
+				if parsed, err := uuid.Parse(sr.SessionId); err == nil {
+					sessionPtr = &parsed
+				}
+			}
+			if exceptionId == uuid.Nil && sessionPtr == nil {
 				continue
 			}
-			// Skip recordings that carry no payload at all. The SDK shouldn't
-			// be sending these, but be defensive — an empty recording would
-			// just be a wasted S3 write and an empty session_recordings row.
 			if isEmptyRaw(sr.Events) && isEmptyRaw(sr.Logs) && isEmptyRaw(sr.Actions) {
 				continue
 			}
@@ -183,12 +228,21 @@ func (e clientController) Report(c *gin.Context) {
 				traceway.CaptureException(traceway.NewStackTraceErrorf("failed to marshal session recording: %w", err))
 				continue
 			}
+			var key string
+			if sessionPtr != nil {
+				key = fmt.Sprintf("recordings/%s/sessions/%s/%d.json", projectId, sessionPtr.String(), sr.SegmentIndex)
+			} else {
+				key = fmt.Sprintf("recordings/%s/%s.json", projectId, exceptionId)
+			}
 			recordingsWork = append(recordingsWork, recordingWork{
-				Id:          uuid.New(),
-				ProjectId:   projectId,
-				ExceptionId: exceptionId,
-				Body:        body,
-				RecordedAt:  time.Now().UTC(),
+				Id:           uuid.New(),
+				ProjectId:    projectId,
+				ExceptionId:  exceptionId,
+				SessionId:    sessionPtr,
+				SegmentIndex: sr.SegmentIndex,
+				Key:          key,
+				Body:         body,
+				RecordedAt:   time.Now().UTC(),
 			})
 		}
 	}
@@ -213,6 +267,16 @@ func (e clientController) Report(c *gin.Context) {
 		insertSpan.End()
 		if err != nil {
 			c.AbortWithError(500, traceway.NewStackTraceErrorf("error inserting tasksToInsert: %w", err))
+			return
+		}
+	}
+
+	if len(sessionsToUpsert) > 0 {
+		insertSpan := traceway.StartSpan(c, "report.upsert.sessions")
+		err := repositories.SessionRepository.Upsert(c, sessionsToUpsert)
+		insertSpan.End()
+		if err != nil {
+			c.AbortWithError(500, traceway.NewStackTraceErrorf("error upserting sessions: %w", err))
 			return
 		}
 	}
@@ -276,17 +340,18 @@ func (e clientController) Report(c *gin.Context) {
 		go func() {
 			var successful []models.SessionRecording
 			for _, rw := range work {
-				key := fmt.Sprintf("recordings/%s/%s.json", rw.ProjectId, rw.ExceptionId)
-				if err := storage.Store.Write(context.Background(), key, rw.Body); err != nil {
-					traceway.CaptureException(traceway.NewStackTraceErrorf("failed to write session recording (key=%s): %w", key, err))
+				if err := storage.Store.Write(context.Background(), rw.Key, rw.Body); err != nil {
+					traceway.CaptureException(traceway.NewStackTraceErrorf("failed to write session recording (key=%s): %w", rw.Key, err))
 					continue
 				}
 				successful = append(successful, models.SessionRecording{
-					Id:          rw.Id,
-					ProjectId:   rw.ProjectId,
-					ExceptionId: rw.ExceptionId,
-					FilePath:    key,
-					RecordedAt:  rw.RecordedAt,
+					Id:           rw.Id,
+					ProjectId:    rw.ProjectId,
+					ExceptionId:  rw.ExceptionId,
+					SessionId:    rw.SessionId,
+					SegmentIndex: rw.SegmentIndex,
+					FilePath:     rw.Key,
+					RecordedAt:   rw.RecordedAt,
 				})
 			}
 			if len(successful) > 0 {

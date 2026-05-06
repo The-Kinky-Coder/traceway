@@ -14,11 +14,13 @@ import (
 )
 
 type sessionRecording struct {
-	Id          uuid.UUID  `lit:"id"`
-	ProjectId   uuid.UUID  `lit:"project_id"`
-	ExceptionId uuid.UUID  `lit:"exception_id"`
-	FilePath    string     `lit:"file_path"`
-	RecordedAt  SQLiteTime `lit:"recorded_at"`
+	Id           uuid.UUID  `lit:"id"`
+	ProjectId    uuid.UUID  `lit:"project_id"`
+	ExceptionId  uuid.UUID  `lit:"exception_id"`
+	SessionId    *uuid.UUID `lit:"session_id"`
+	SegmentIndex int32      `lit:"segment_index"`
+	FilePath     string     `lit:"file_path"`
+	RecordedAt   SQLiteTime `lit:"recorded_at"`
 }
 
 func init() {
@@ -36,11 +38,13 @@ func (r *sessionRecordingRepository) InsertAsync(ctx context.Context, recordings
 
 	for _, rec := range recordings {
 		row := sessionRecording{
-			Id:          rec.Id,
-			ProjectId:   rec.ProjectId,
-			ExceptionId: rec.ExceptionId,
-			FilePath:    rec.FilePath,
-			RecordedAt:  NewSQLiteTime(rec.RecordedAt),
+			Id:           rec.Id,
+			ProjectId:    rec.ProjectId,
+			ExceptionId:  rec.ExceptionId,
+			SessionId:    rec.SessionId,
+			SegmentIndex: rec.SegmentIndex,
+			FilePath:     rec.FilePath,
+			RecordedAt:   NewSQLiteTime(rec.RecordedAt),
 		}
 		if err := lit.InsertExistingUuid(db.TelemetryDB, &row); err != nil {
 			return err
@@ -61,6 +65,30 @@ func (r *sessionRecordingRepository) FindByExceptionId(ctx context.Context, proj
 		return "", sql.ErrNoRows
 	}
 	return result.FilePath, nil
+}
+
+// FindBySessionId returns all recording segments for a session ordered by segment_index.
+func (r *sessionRecordingRepository) FindBySessionId(ctx context.Context, projectId, sessionId uuid.UUID) ([]models.SessionRecording, error) {
+	rows, err := lit.SelectNamed[sessionRecording](db.TelemetryDB,
+		"SELECT id, project_id, exception_id, session_id, segment_index, file_path, recorded_at FROM session_recordings WHERE project_id = :project_id AND session_id = :session_id ORDER BY segment_index ASC, recorded_at ASC",
+		lit.P{"project_id": projectId, "session_id": sessionId})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]models.SessionRecording, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, models.SessionRecording{
+			Id:           row.Id,
+			ProjectId:    row.ProjectId,
+			ExceptionId:  row.ExceptionId,
+			SessionId:    row.SessionId,
+			SegmentIndex: row.SegmentIndex,
+			FilePath:     row.FilePath,
+			RecordedAt:   row.RecordedAt.Time,
+		})
+	}
+	return out, nil
 }
 
 // Preserve original error contract: returns sql.ErrNoRows when not found

@@ -23,6 +23,7 @@
 		occurrence: ExceptionOccurrence;
 		linkedTrace: LinkedTrace | null;
 		sessionRecording?: SessionRecording | null;
+		sessionId?: string | null;
 		title?: string;
 		description?: string;
 		timezone?: string;
@@ -32,6 +33,7 @@
 		occurrence,
 		linkedTrace,
 		sessionRecording = null,
+		sessionId = null,
 		title = 'Event',
 		description = 'Details for this specific occurrence',
 		timezone
@@ -66,8 +68,18 @@
 <!-- Session Replay -->
 {#if hasReplay}
 	<Card.Root class="pb-0">
-		<Card.Header class="gap-0">
+		<Card.Header class="flex flex-row items-center justify-between gap-2">
 			<Card.Title>Session Replay</Card.Title>
+			{#if sessionId}
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goto(`/sessions/${sessionId}`)}
+				>
+					View full session
+					<ArrowRight class="size-4" />
+				</Button>
+			{/if}
 		</Card.Header>
 		<Card.Content class="p-0">
 			{#key recordingEvents}
@@ -77,6 +89,23 @@
 					onTimeUpdate={(ms) => (currentTimeMs = ms)}
 				/>
 			{/key}
+		</Card.Content>
+	</Card.Root>
+{:else if sessionId}
+	<Card.Root>
+		<Card.Header class="flex flex-row items-center justify-between gap-2">
+			<Card.Title>Session</Card.Title>
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={() => goto(`/sessions/${sessionId}`)}
+			>
+				View full session
+				<ArrowRight class="size-4" />
+			</Button>
+		</Card.Header>
+		<Card.Content class="text-sm text-muted-foreground">
+			This exception is linked to a recorded user session.
 		</Card.Content>
 	</Card.Root>
 {/if}

@@ -16,6 +16,7 @@ type ClientExceptionStackTrace struct {
 	Attributes         map[string]string `json:"attributes"`
 	IsMessage          bool              `json:"isMessage"`
 	SessionRecordingId *string           `json:"sessionRecordingId"`
+	SessionId          *string           `json:"sessionId"`
 	DistributedTraceId *string           `json:"distributedTraceId"`
 }
 
@@ -39,6 +40,13 @@ func (c *ClientExceptionStackTrace) ToExceptionStackTrace(exceptionHash, appVers
 		}
 	}
 
+	var sessionId *uuid.UUID
+	if c.SessionId != nil {
+		if parsed, err := uuid.Parse(*c.SessionId); err == nil {
+			sessionId = &parsed
+		}
+	}
+
 	return models.ExceptionStackTrace{
 		ExceptionHash:      exceptionHash,
 		TraceId:            traceId,
@@ -50,6 +58,7 @@ func (c *ClientExceptionStackTrace) ToExceptionStackTrace(exceptionHash, appVers
 		AppVersion:         appVersion,
 		ServerName:         serverName,
 		DistributedTraceId: distributedTraceId,
+		SessionId:          sessionId,
 	}
 }
 
@@ -165,8 +174,10 @@ func (c *ClientSpan) ToSpan(traceId uuid.UUID) models.Span {
 }
 
 type ClientSessionRecording struct {
-	ExceptionId string          `json:"exceptionId"`
-	Events      json.RawMessage `json:"events"`
+	ExceptionId  string          `json:"exceptionId"`
+	SessionId    string          `json:"sessionId,omitempty"`
+	SegmentIndex int32           `json:"segmentIndex,omitempty"`
+	Events       json.RawMessage `json:"events"`
 	// Logs and Actions are opaque to the backend — they ride into S3 alongside
 	// Events without ever being inspected. App console logs from session
 	// recordings are intentionally NOT inserted into the OTel logs ClickHouse
@@ -177,9 +188,53 @@ type ClientSessionRecording struct {
 	EndedAt   *time.Time      `json:"endedAt,omitempty"`
 }
 
+type ClientSession struct {
+	Id                 string            `json:"id"`
+	StartedAt          time.Time         `json:"startedAt"`
+	EndedAt            *time.Time        `json:"endedAt,omitempty"`
+	ClientIP           string            `json:"clientIP"`
+	Attributes         map[string]string `json:"attributes"`
+	DistributedTraceId string            `json:"distributedTraceId,omitempty"`
+}
+
+func (c *ClientSession) ToSession(appVersion, serverName string) models.Session {
+	id, err := uuid.Parse(c.Id)
+	if err != nil {
+		id = uuid.New()
+	}
+
+	var distributedTraceId *uuid.UUID
+	if c.DistributedTraceId != "" {
+		if parsed, err := uuid.Parse(c.DistributedTraceId); err == nil {
+			distributedTraceId = &parsed
+		}
+	}
+
+	var duration int64
+	if c.EndedAt != nil {
+		duration = c.EndedAt.Sub(c.StartedAt).Nanoseconds()
+		if duration < 0 {
+			duration = 0
+		}
+	}
+
+	return models.Session{
+		Id:                 id,
+		StartedAt:          c.StartedAt,
+		EndedAt:            c.EndedAt,
+		Duration:           duration,
+		ClientIP:           c.ClientIP,
+		Attributes:         c.Attributes,
+		AppVersion:         appVersion,
+		ServerName:         serverName,
+		DistributedTraceId: distributedTraceId,
+	}
+}
+
 type CollectionFrame struct {
 	StackTraces       []*ClientExceptionStackTrace `json:"stackTraces"`
 	Metrics           []*ClientMetricRecord        `json:"metrics"`
 	Traces            []*ClientTrace               `json:"traces"`
 	SessionRecordings []*ClientSessionRecording    `json:"sessionRecordings"`
+	Sessions          []*ClientSession             `json:"sessions"`
 }

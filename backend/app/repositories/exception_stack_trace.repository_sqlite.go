@@ -29,6 +29,7 @@ type exceptionRow struct {
 	ServerName         string        `lit:"server_name"`
 	IsMessage          bool          `lit:"is_message"`
 	DistributedTraceId *uuid.UUID    `lit:"distributed_trace_id"`
+	SessionId          *uuid.UUID    `lit:"session_id"`
 }
 
 type exceptionRowNaming struct{ lit.DefaultDbNamingStrategy }
@@ -78,6 +79,7 @@ func exceptionToRow(est models.ExceptionStackTrace) exceptionRow {
 		ServerName:         est.ServerName,
 		IsMessage:          est.IsMessage,
 		DistributedTraceId: est.DistributedTraceId,
+		SessionId:          est.SessionId,
 	}
 }
 
@@ -94,6 +96,7 @@ func (r *exceptionRow) toModel() models.ExceptionStackTrace {
 		ServerName:         r.ServerName,
 		IsMessage:          r.IsMessage,
 		DistributedTraceId: r.DistributedTraceId,
+		SessionId:          r.SessionId,
 	}
 	if r.Attributes != nil {
 		est.Attributes = map[string]string(r.Attributes)
@@ -244,7 +247,7 @@ func (e *exceptionStackTraceRepository) FindByHash(ctx context.Context, projectI
 	}
 
 	rows, err := lit.SelectNamed[exceptionRow](db.TelemetryDB,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
 		FROM exception_stack_traces WHERE project_id = :project_id AND exception_hash = :exception_hash
 		ORDER BY recorded_at DESC LIMIT :limit OFFSET :offset`,
 		lit.P{"project_id": projectId, "exception_hash": exceptionHash, "limit": pageSize, "offset": offset})
@@ -380,7 +383,7 @@ func (e *exceptionStackTraceRepository) IsArchived(ctx context.Context, projectI
 
 func (e *exceptionStackTraceRepository) FindExceptionByTraceId(ctx context.Context, projectId uuid.UUID, traceId uuid.UUID) (*models.ExceptionStackTrace, error) {
 	row, err := lit.SelectSingleNamed[exceptionRow](db.TelemetryDB,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
 		FROM exception_stack_traces WHERE project_id = :project_id AND trace_id = :trace_id AND is_message = 0 LIMIT 1`,
 		lit.P{"project_id": projectId, "trace_id": traceId})
 	if err != nil {
@@ -395,7 +398,7 @@ func (e *exceptionStackTraceRepository) FindExceptionByTraceId(ctx context.Conte
 
 func (e *exceptionStackTraceRepository) FindAllByTraceId(ctx context.Context, projectId uuid.UUID, traceId uuid.UUID) ([]models.ExceptionStackTrace, error) {
 	rows, err := lit.SelectNamed[exceptionRow](db.TelemetryDB,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
 		FROM exception_stack_traces WHERE project_id = :project_id AND trace_id = :trace_id ORDER BY recorded_at ASC`,
 		lit.P{"project_id": projectId, "trace_id": traceId})
 	if err != nil {
@@ -411,7 +414,7 @@ func (e *exceptionStackTraceRepository) FindAllByTraceId(ctx context.Context, pr
 
 func (e *exceptionStackTraceRepository) FindById(ctx context.Context, projectId uuid.UUID, id uuid.UUID) (*models.ExceptionStackTrace, error) {
 	row, err := lit.SelectSingleNamed[exceptionRow](db.TelemetryDB,
-		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
 		FROM exception_stack_traces WHERE project_id = :project_id AND id = :id LIMIT 1`,
 		lit.P{"project_id": projectId, "id": id})
 	if err != nil {
@@ -436,7 +439,7 @@ func (e *exceptionStackTraceRepository) FindByDistributedTraceId(ctx context.Con
 		params[key] = pid
 	}
 
-	query := `SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id
+	query := `SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
 		FROM exception_stack_traces WHERE distributed_trace_id = :trace_id AND project_id IN (` + strings.Join(placeholders, ",") + `) AND is_message = 0
 		ORDER BY recorded_at ASC`
 
@@ -455,12 +458,43 @@ func (e *exceptionStackTraceRepository) FindByDistributedTraceId(ctx context.Con
 	for sqlRows.Next() {
 		var row exceptionRow
 		if err := sqlRows.Scan(&row.Id, &row.ProjectId, &row.TraceId, &row.TraceType, &row.ExceptionHash, &row.StackTrace,
-			&row.RecordedAt, &row.Attributes, &row.AppVersion, &row.ServerName, &row.IsMessage, &row.DistributedTraceId); err != nil {
+			&row.RecordedAt, &row.Attributes, &row.AppVersion, &row.ServerName, &row.IsMessage, &row.DistributedTraceId, &row.SessionId); err != nil {
 			return nil, err
 		}
 		results = append(results, row.toModel())
 	}
 	return results, nil
+}
+
+// FindAllBySessionId returns all exceptions/messages stamped with the given session_id, ordered by time.
+func (e *exceptionStackTraceRepository) FindAllBySessionId(ctx context.Context, projectId, sessionId uuid.UUID) ([]models.ExceptionStackTrace, error) {
+	rows, err := lit.SelectNamed[exceptionRow](db.TelemetryDB,
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
+			FROM exception_stack_traces
+			WHERE project_id = :project_id AND session_id = :session_id
+			ORDER BY recorded_at ASC`,
+		lit.P{"project_id": projectId, "session_id": sessionId})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]models.ExceptionStackTrace, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.toModel())
+	}
+	return out, nil
+}
+
+// GetSessionIdForException returns the session_id for the given exception or nil when not linked.
+func (e *exceptionStackTraceRepository) GetSessionIdForException(ctx context.Context, projectId, exceptionId uuid.UUID) (*uuid.UUID, error) {
+	row, err := lit.SelectSingleNamed[exceptionRow](db.TelemetryDB,
+		`SELECT id, project_id, trace_id, trace_type, exception_hash, stack_trace, recorded_at, attributes, app_version, server_name, is_message, distributed_trace_id, session_id
+			FROM exception_stack_traces
+			WHERE project_id = :project_id AND id = :id LIMIT 1`,
+		lit.P{"project_id": projectId, "id": exceptionId})
+	if err != nil || row == nil {
+		return nil, err
+	}
+	return row.SessionId, nil
 }
 
 var ExceptionStackTraceRepository = exceptionStackTraceRepository{}

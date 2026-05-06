@@ -46,6 +46,10 @@ type ExceptionDetailResponse struct {
 	Occurrences      []models.ExceptionStackTrace `json:"occurrences"`
 	Pagination       Pagination                   `json:"pagination"`
 	SessionRecording json.RawMessage              `json:"sessionRecording,omitempty"`
+	// SessionId is set when the exception is linked to a parent session row
+	// (always-on recording). The frontend swaps SessionRecording for a fetch
+	// against `/sessions/:sessionId/recording`, which spans every segment.
+	SessionId *uuid.UUID `json:"sessionId,omitempty"`
 }
 
 // wrapLegacyRecording handles the case where a recording in blob storage was
@@ -177,6 +181,9 @@ func (e exceptionStackTraceController) FindByHash(c *gin.Context) {
 	}
 
 	if len(occurrences) > 0 {
+		// The per-exception 10 s clip and the parent session are independent
+		// attachments — surface both whenever they exist. The dashboard plays
+		// the clip inline and renders a link to the full session.
 		filePath, err := repositories.SessionRecordingRepository.FindByExceptionId(c, projectId, occurrences[0].Id)
 		if err == nil && filePath != "" {
 			recording, err := loadSessionRecording(c, filePath)
@@ -187,6 +194,11 @@ func (e exceptionStackTraceController) FindByHash(c *gin.Context) {
 			}
 		} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			traceway.CaptureException(fmt.Errorf("failed to load session recording ref for exception %s: %w", occurrences[0].Id, err))
+		}
+
+		sessionId, err := repositories.ExceptionStackTraceRepository.GetSessionIdForException(c, projectId, occurrences[0].Id)
+		if err == nil && sessionId != nil {
+			response.SessionId = sessionId
 		}
 	}
 
@@ -285,6 +297,11 @@ func (e exceptionStackTraceController) FindById(c *gin.Context) {
 		}
 	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		traceway.CaptureException(fmt.Errorf("failed to load session recording ref for exception %s: %w", exceptionId, err))
+	}
+
+	sessionId, err := repositories.ExceptionStackTraceRepository.GetSessionIdForException(c, projectId, exceptionId)
+	if err == nil && sessionId != nil {
+		response["sessionId"] = sessionId
 	}
 
 	c.JSON(http.StatusOK, response)

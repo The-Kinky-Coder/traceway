@@ -2,6 +2,12 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { Globe, Play, Pause, Maximize, Minimize } from 'lucide-svelte';
 	import type { eventWithTime } from '@rrweb/types';
+	// Static side-effect import — keeps the rrweb-player stylesheet attached
+	// to the page for the lifetime of the SPA, even across mount/unmount cycles.
+	// A dynamic import inside onMount would let Vite's HMR dispose the style
+	// node when the component unmounts, leaving the next mount with no
+	// background fill on .replayer-wrapper until a hard refresh.
+	import 'rrweb-player/dist/style.css';
 
 	interface FlutterVideoEvent {
 		type: 'flutter_video';
@@ -160,7 +166,6 @@
 		if (!events || events.length === 0 || isFlutterVideo) return;
 
 		const { default: rrwebPlayer } = await import('rrweb-player');
-		await import('rrweb-player/dist/style.css');
 
 		const width = Math.round(container.clientWidth * 0.75);
 
