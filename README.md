@@ -29,12 +29,12 @@ Traceway is an **OpenTelemetry-native** observability platform that combines **l
 
 **MIT licensed. No BSL. No "open core."** Every feature is in the box. Self-host it for free, or run it on [Traceway Cloud](https://cloud.tracewayapp.com) if you'd rather not babysit infra.
 
+<img alt="Traceway Dashboard" src="./website/public/images/performance-endpoints-impact-table.png" />
+
 <p align="center">
   <a href="https://discord.gg/9tPn2SB3"><b>👋 Join the Traceway Community on Discord →</b></a><br>
   <sub>Chat with the team, shape the roadmap, get help, and meet other folks running Traceway in production.</sub>
 </p>
-
-<img alt="Traceway Dashboard" src="./website/public/images/performance-endpoints-impact-table.png" />
 
 ## What's in the box
 
