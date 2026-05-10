@@ -28,8 +28,10 @@ type Cfg struct {
 	S3SecretKey string
 	S3Endpoint  string
 
-	SQLiteRetentionDays           string
-	SessionRecordingRetentionDays string
+	SQLiteRetentionDays             string
+	SessionRecordingRetentionDays   string
+	SessionRecordingUploadWorkers   string
+	SessionRecordingUploadQueueSize string
 
 	SMTPEnabled  string
 	SMTPHost     string
@@ -83,8 +85,10 @@ func LoadFromEnv() *Cfg {
 		S3SecretKey: os.Getenv("S3_SECRET_KEY"),
 		S3Endpoint:  os.Getenv("S3_ENDPOINT"),
 
-		SQLiteRetentionDays:           os.Getenv("SQLITE_RETENTION_DAYS"),
-		SessionRecordingRetentionDays: os.Getenv("SESSION_RECORDING_RETENTION_DAYS"),
+		SQLiteRetentionDays:             os.Getenv("SQLITE_RETENTION_DAYS"),
+		SessionRecordingRetentionDays:   os.Getenv("SESSION_RECORDING_RETENTION_DAYS"),
+		SessionRecordingUploadWorkers:   os.Getenv("SESSION_RECORDING_UPLOAD_WORKERS"),
+		SessionRecordingUploadQueueSize: os.Getenv("SESSION_RECORDING_UPLOAD_QUEUE_SIZE"),
 
 		SMTPEnabled:  os.Getenv("SMTP_ENABLED"),
 		SMTPHost:     os.Getenv("SMTP_HOST"),

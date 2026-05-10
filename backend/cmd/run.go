@@ -11,6 +11,7 @@ import (
 	"github.com/tracewayapp/traceway/backend/app/models"
 	"github.com/tracewayapp/traceway/backend/app/monitoring"
 	"github.com/tracewayapp/traceway/backend/app/notifications"
+	"github.com/tracewayapp/traceway/backend/app/recordings"
 	"github.com/tracewayapp/traceway/backend/app/retention"
 	"github.com/tracewayapp/traceway/backend/app/services"
 	"github.com/tracewayapp/traceway/backend/app/storage"
@@ -122,6 +123,7 @@ func Run(opts ...Option) {
 
 	notifications.StartEvaluator(ctx)
 	retention.Start(ctx)
+	recordings.Start(ctx)
 
 	var router *gin.Engine
 	if o != nil && o.disableLogging {

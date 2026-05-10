@@ -248,6 +248,10 @@ POSTGRES_SSLMODE=disable
 # Retention (see "Data Retention" section below)
 SQLITE_RETENTION_DAYS=30              # 0 to disable; only applies in SQLite mode
 SESSION_RECORDING_RETENTION_DAYS=30   # 0 to disable; only applies when STORAGE_TYPE=local
+
+# Session recording uploads (see "Session Recording Uploader" section below)
+SESSION_RECORDING_UPLOAD_WORKERS=32   # 0 to disable uploads entirely
+SESSION_RECORDING_UPLOAD_QUEUE_SIZE=2048
 ```
 
 ---
@@ -761,6 +765,27 @@ Tables it prunes (and the column used):
 | `SESSION_RECORDING_RETENTION_DAYS` | `30` | TTL in days. Set to `0` to disable the worker. Only runs when `STORAGE_TYPE=local` (default). |
 
 The DB rows in `session_recordings` are pruned by the SQLite retention worker (above) or by ClickHouse TTL — they are intentionally not coupled to the disk cleanup. Controllers that read recordings already log a non-fatal `traceway.CaptureException` when a referenced file is missing.
+
+#### Session Recording Uploader
+
+Session recording segments arriving on `/api/report` are not uploaded inline. The handler enqueues each segment onto a bounded worker pool (`backend/app/recordings/uploader.go`, started from `cmd/run.go` next to `retention.Start`). Workers drain the queue and write the body via `storage.Store.Write` (S3 or local disk); successful writes are handed to a single batcher goroutine that calls `SessionRecordingRepository.InsertAsync` once per ~1000 rows or every 2 s, whichever comes first — single-row inserts are an anti-pattern for ClickHouse. Enqueue is non-blocking: when the queue is full the segment is dropped (newest-first) so a burst of `/api/report` traffic cannot spawn unbounded goroutines or saturate S3.
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `SESSION_RECORDING_UPLOAD_WORKERS` | `32` | Concurrent uploaders. Set to `0` to drop every segment (uploads disabled). |
+| `SESSION_RECORDING_UPLOAD_QUEUE_SIZE` | `2048` | Max queued segments. Overflow is dropped. |
+
+Observability (emitted every 10s via `traceway.CaptureMetric`):
+
+| Metric | Type | Meaning |
+|--------|------|---------|
+| `traceway.recordings.queue_depth` | gauge | Segments currently waiting in the channel. |
+| `traceway.recordings.in_flight` | gauge | Workers mid-upload. |
+| `traceway.recordings.uploaded` | counter | Successful S3/local + DB writes since startup. |
+| `traceway.recordings.dropped` | counter | Segments dropped on overflow since startup. |
+| `traceway.recordings.failed` | counter | Upload or DB-insert errors since startup. |
+
+Sustained drops also fire a rate-limited (1/min) `traceway.CaptureException` so overload is visible in the issues feed without flooding it.
 
 #### Organization Roles
 | Role | Description |

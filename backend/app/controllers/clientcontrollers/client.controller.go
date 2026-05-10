@@ -2,7 +2,6 @@ package clientcontrollers
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -19,9 +18,9 @@ import (
 	"github.com/tracewayapp/traceway/backend/app/models"
 	"github.com/tracewayapp/traceway/backend/app/models/clientmodels"
 	"github.com/tracewayapp/traceway/backend/app/monitoring"
+	"github.com/tracewayapp/traceway/backend/app/recordings"
 	"github.com/tracewayapp/traceway/backend/app/repositories"
 	"github.com/tracewayapp/traceway/backend/app/services"
-	"github.com/tracewayapp/traceway/backend/app/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -84,22 +83,7 @@ func (e clientController) Report(c *gin.Context) {
 	spansToInsert := []models.Span{}
 	sessionsToUpsert := []models.Session{}
 
-	type recordingWork struct {
-		Id           uuid.UUID
-		ProjectId    uuid.UUID
-		ExceptionId  uuid.UUID
-		SessionId    *uuid.UUID
-		SegmentIndex int32
-		// Key is the S3 object key the body is written to.
-		Key string
-		// Body is the marshaled JSON of the entire ClientSessionRecording
-		// sub-document — events + logs + actions + startedAt/endedAt — exactly
-		// as it lands in S3. App console logs in `logs` are intentionally not
-		// inserted into the OTel logs ClickHouse table; they live only here.
-		Body       []byte
-		RecordedAt time.Time
-	}
-	var recordingsWork []recordingWork
+	var recordingsWork []recordings.Job
 
 	// Map frontend sessionRecordingId → backend-generated exception UUID.
 	// Used only for the legacy exception-bound recording path; the always-on
@@ -234,7 +218,7 @@ func (e clientController) Report(c *gin.Context) {
 			} else {
 				key = fmt.Sprintf("recordings/%s/%s.json", projectId, exceptionId)
 			}
-			recordingsWork = append(recordingsWork, recordingWork{
+			recordingsWork = append(recordingsWork, recordings.Job{
 				Id:           uuid.New(),
 				ProjectId:    projectId,
 				ExceptionId:  exceptionId,
@@ -335,31 +319,8 @@ func (e clientController) Report(c *gin.Context) {
 		}
 	}
 
-	if len(recordingsWork) > 0 {
-		work := recordingsWork
-		go func() {
-			var successful []models.SessionRecording
-			for _, rw := range work {
-				if err := storage.Store.Write(context.Background(), rw.Key, rw.Body); err != nil {
-					traceway.CaptureException(traceway.NewStackTraceErrorf("failed to write session recording (key=%s): %w", rw.Key, err))
-					continue
-				}
-				successful = append(successful, models.SessionRecording{
-					Id:           rw.Id,
-					ProjectId:    rw.ProjectId,
-					ExceptionId:  rw.ExceptionId,
-					SessionId:    rw.SessionId,
-					SegmentIndex: rw.SegmentIndex,
-					FilePath:     rw.Key,
-					RecordedAt:   rw.RecordedAt,
-				})
-			}
-			if len(successful) > 0 {
-				if err := repositories.SessionRecordingRepository.InsertAsync(context.Background(), successful); err != nil {
-					traceway.CaptureException(traceway.NewStackTraceErrorf("failed to batch insert %d session recording refs: %w", len(successful), err))
-				}
-			}
-		}()
+	for _, rw := range recordingsWork {
+		recordings.Enqueue(rw)
 	}
 
 	c.JSON(http.StatusOK, gin.H{})
