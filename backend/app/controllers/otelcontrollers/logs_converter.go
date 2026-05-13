@@ -60,12 +60,21 @@ func toLogRecord(
 		severityText = severityTextFromNumber(severityNumber)
 	}
 
+	// JSON-OTLP trace_id/span_id arrive as 24/12 base64 bytes — round-trip through the UUID helpers.
+	var traceIDHex, spanIDHex string
+	if u := otelTraceIDToUUID(lr.TraceId); u != uuid.Nil {
+		traceIDHex = hex.EncodeToString(u[:])
+	}
+	if u := otelSpanIDToUUID(lr.SpanId); u != uuid.Nil {
+		spanIDHex = spanUUIDToHex(u)
+	}
+
 	return models.LogRecord{
 		Id:                 uuid.New(),
 		ProjectId:          projectId,
 		Timestamp:          nanoToTime(ts),
-		TraceId:            hex.EncodeToString(lr.TraceId),
-		SpanId:             hex.EncodeToString(lr.SpanId),
+		TraceId:            traceIDHex,
+		SpanId:             spanIDHex,
 		TraceFlags:         uint8(lr.Flags),
 		SeverityText:       severityText,
 		SeverityNumber:     severityNumber,
