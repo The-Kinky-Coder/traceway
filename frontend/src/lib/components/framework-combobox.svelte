@@ -33,6 +33,7 @@
         { value: 'vuejs', label: 'Vue.js', description: 'Progressive frontend framework', group: 'JavaScript' },
         { value: 'jquery', label: 'jQuery', description: 'Legacy-friendly AJAX and DOM library', group: 'JavaScript' },
         { value: 'symfony', label: 'Symfony', description: 'PHP full-stack framework (OTLP)', group: 'PHP' },
+        { value: 'laravel', label: 'Laravel', description: 'PHP full-stack framework (OTLP)', group: 'PHP' },
         { value: 'hono', label: 'Hono', description: 'Lightweight multi-runtime framework (OTLP)', group: 'Backend' },
         { value: 'cloudflare', label: 'Cloudflare', description: 'Cloudflare Workers (OTLP Traces)', group: 'Backend' },
         { value: 'opentelemetry', label: 'OpenTelemetry', description: 'Vendor-neutral observability', group: 'Backend' },

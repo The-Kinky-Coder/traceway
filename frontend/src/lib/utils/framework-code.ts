@@ -36,6 +36,8 @@ export function getInstallCommand(framework: Framework): string {
 			return '';
 		case 'symfony':
 			return 'composer require traceway/opentelemetry-symfony open-telemetry/exporter-otlp php-http/guzzle7-adapter';
+		case 'laravel':
+			return 'composer require keepsuit/laravel-opentelemetry open-telemetry/exporter-otlp php-http/guzzle7-adapter';
 		case 'cloudflare':
 			return '';
 		case 'opentelemetry':
@@ -316,6 +318,27 @@ $response = $kernel->handle($request);
 $response->send();
 $kernel->terminate($request, $response);`;
 
+		case 'laravel':
+			return `<?php
+// .env  — point the OTLP exporter at Traceway
+//
+// OTEL_SERVICE_NAME=my-laravel-app
+// OTEL_TRACES_EXPORTER=otlp
+// OTEL_METRICS_EXPORTER=otlp
+// OTEL_LOGS_EXPORTER=otlp
+// OTEL_EXPORTER_OTLP_PROTOCOL=http/json
+// OTEL_EXPORTER_OTLP_ENDPOINT=${backendUrl}/api/otel
+// OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ${token || 'YOUR_TOKEN'}"
+//
+// Optional: send Laravel logs to Traceway via the auto-injected 'otlp' channel
+// LOG_CHANNEL=otlp
+
+// That's it — keepsuit/laravel-opentelemetry's service provider auto-registers
+// TraceRequestMiddleware as a global middleware, so every HTTP request, DB query,
+// queued job, Redis call, cache op, view render and outbound Http:: call is
+// traced automatically. Open config/opentelemetry.php to tune which
+// instrumentations are enabled.`;
+
 		case 'hono':
 			return '';
 
@@ -392,6 +415,15 @@ class TestController
     }
 }`;
 	}
+	if (framework === 'laravel') {
+		return `<?php
+// routes/web.php
+use Illuminate\\Support\\Facades\\Route;
+
+Route::get('/testing', function () {
+    throw new \\RuntimeException('Test error from Traceway integration');
+});`;
+	}
 	if (framework === 'flutter') {
 		return `// Trigger a test error
 throw StateError('Test error from Traceway integration');`;
@@ -411,6 +443,9 @@ throw new Error("Test error from Traceway integration");`;
 
 export function getTestingRouteCode2(framework?: Framework): string {
 	if (framework === 'symfony') {
+		return '';
+	}
+	if (framework === 'laravel') {
 		return '';
 	}
 	if (framework === 'flutter') {
@@ -512,6 +547,7 @@ export function getFrameworkLabel(framework: Framework): string {
 		cloudflare: 'Cloudflare',
 		opentelemetry: 'OpenTelemetry',
 		symfony: 'Symfony',
+		laravel: 'Laravel',
 		flutter: 'Flutter',
 		android: 'Android',
 	};
@@ -520,6 +556,7 @@ export function getFrameworkLabel(framework: Framework): string {
 
 export function getCodeLanguage(framework: Framework): 'go' | 'javascript' | 'bash' | 'php' {
 	if (framework === 'symfony') return 'php';
+	if (framework === 'laravel') return 'php';
 	if (framework === 'opentelemetry') return 'go';
 	if (framework === 'hono') return 'javascript';
 	if (framework === 'cloudflare') return 'javascript';

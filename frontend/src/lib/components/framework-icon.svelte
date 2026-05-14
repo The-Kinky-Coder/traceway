@@ -56,6 +56,8 @@
     <img src="/opentelemetry.png" alt="OpenTelemetry" class={className} />
 {:else if framework === 'symfony'}
     <img src="/symfony.png" alt="Symfony" class={className} />
+{:else if framework === 'laravel'}
+    <img src="/laravel.png" alt="Laravel" class={className} />
 {:else if framework === 'flutter'}
     <img src="/flutter.png" alt="Flutter" class={className} style="object-fit: contain;" />
 {:else if framework === 'android'}
