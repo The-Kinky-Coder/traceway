@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Provision a system-under-test (SUT) box + a load generator box + a private
+# network in Hetzner Cloud. Idempotent on its own outputs: re-running with the
+# same RUN_ID short-circuits if the resources already exist.
+#
+# Usage: hetzner-up.sh <tier> <run-id> [location]
+#   <tier>      ccx13 | ccx23 | ccx33 | ccx43
+#   <run-id>    short label, used to name the resources (e.g. 20260512-ccx13-sqlite-a1b2)
+#   [location]  Hetzner datacenter, default nbg1
+#
+# Emits a JSON line on stdout:
+#   {"sutPublicIp":"...","sutPrivateIp":"...","loadgenPublicIp":"...","loadgenPrivateIp":"...","networkId":"...","runId":"..."}
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+    echo "usage: $0 <tier> <run-id> [location]" >&2
+    exit 2
+fi
+
+TIER="$1"
+RUN_ID="$2"
+LOCATION="${3:-nbg1}"
+LOADGEN_TIER="${LOADGEN_TIER:-cax11}"
+IMAGE="${BENCH_IMAGE:-debian-12}"
+NET_NAME="bench-net-${RUN_ID}"
+SUT_NAME="bench-sut-${RUN_ID}"
+LOADGEN_NAME="bench-loadgen-${RUN_ID}"
+
+# Create a /24 private network so SUT and loadgen can talk over 10.0.0.x.
+if ! hcloud network describe "${NET_NAME}" >/dev/null 2>&1; then
+    echo "creating network ${NET_NAME}" >&2
+    hcloud network create --name "${NET_NAME}" --ip-range 10.0.0.0/24 >/dev/null
+    hcloud network add-subnet "${NET_NAME}" --network-zone eu-central --type cloud --ip-range 10.0.0.0/24 >/dev/null
+fi
+NET_ID=$(hcloud network describe "${NET_NAME}" -o format='{{.ID}}')
+
+create_server() {
+    local name="$1" type="$2" private_ip="$3"
+    if hcloud server describe "${name}" >/dev/null 2>&1; then
+        echo "server ${name} already exists, reusing" >&2
+        return
+    fi
+    echo "creating server ${name} (${type}) in ${LOCATION}" >&2
+    hcloud server create \
+        --name "${name}" \
+        --type "${type}" \
+        --image "${IMAGE}" \
+        --location "${LOCATION}" \
+        --ssh-key benchmark-key \
+        --network "${NET_NAME}" \
+        --label "bench=true,run=${RUN_ID}" \
+        >/dev/null
+}
+
+create_server "${SUT_NAME}" "${TIER}" "10.0.0.2"
+create_server "${LOADGEN_NAME}" "${LOADGEN_TIER}" "10.0.0.3"
+
+# Hetzner doesn't let you pin the private IP at create time on shared networks
+# without --network-extra; we re-read both servers' assigned private IPs and
+# return them.
+get_field() {
+    local name="$1" field="$2"
+    hcloud server describe "${name}" -o format="{{${field}}}"
+}
+
+SUT_PUBLIC_IP=$(get_field "${SUT_NAME}" ".PublicNet.IPv4.IP")
+LOADGEN_PUBLIC_IP=$(get_field "${LOADGEN_NAME}" ".PublicNet.IPv4.IP")
+SUT_PRIVATE_IP=$(hcloud server describe "${SUT_NAME}" -o json | jq -r '.private_net[0].ip')
+LOADGEN_PRIVATE_IP=$(hcloud server describe "${LOADGEN_NAME}" -o json | jq -r '.private_net[0].ip')
+
+jq -nc \
+    --arg sutPub "${SUT_PUBLIC_IP}" \
+    --arg sutPriv "${SUT_PRIVATE_IP}" \
+    --arg lgPub "${LOADGEN_PUBLIC_IP}" \
+    --arg lgPriv "${LOADGEN_PRIVATE_IP}" \
+    --arg netId "${NET_ID}" \
+    --arg runId "${RUN_ID}" \
+    '{sutPublicIp: $sutPub, sutPrivateIp: $sutPriv, loadgenPublicIp: $lgPub, loadgenPrivateIp: $lgPriv, networkId: $netId, runId: $runId}'

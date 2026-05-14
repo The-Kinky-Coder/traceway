@@ -1,0 +1,138 @@
+name: benchmark-hardware
+
+# Manual-only: this workflow provisions and tears down Hetzner servers, which
+# costs real money (about €0.30/run today). Triggering must be deliberate.
+on:
+  workflow_dispatch:
+    inputs:
+      tiers:
+        description: 'Comma-separated Hetzner tiers (e.g. ccx13,ccx23,ccx33,ccx43)'
+        required: true
+        default: 'ccx13,ccx23,ccx33,ccx43'
+      modes:
+        description: 'Comma-separated DB modes (sqlite,pgch)'
+        required: true
+        default: 'sqlite,pgch'
+      duration:
+        description: 'Per-matrix-entry loadgen duration (e.g. 30m, 5m)'
+        required: true
+        default: '30m'
+      location:
+        description: 'Hetzner datacenter (nbg1, fsn1, hel1, ash, hil)'
+        required: true
+        default: 'nbg1'
+
+concurrency:
+  group: benchmark-hardware
+  cancel-in-progress: false
+
+permissions:
+  contents: write    # aggregate job commits the results back to main
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        name: Build matrix from inputs
+        run: |
+          set -euo pipefail
+          tiers="${{ github.event.inputs.tiers }}"
+          modes="${{ github.event.inputs.modes }}"
+          jq -nc \
+            --arg tiers "${tiers}" \
+            --arg modes "${modes}" \
+            '{include: [($tiers | split(",")) as $T | ($modes | split(",")) as $M | $T[] as $t | $M[] as $m | {tier: $t, mode: $m}]}' \
+            > matrix.json
+          cat matrix.json
+          echo "matrix=$(cat matrix.json)" >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+    env:
+      HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      BENCHMARK_SSH_KEY: ${{ runner.temp }}/benchmark-key
+      BENCH_LOCATION: ${{ github.event.inputs.location }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install hcloud CLI
+        run: |
+          curl -fsSL https://github.com/hetznercloud/cli/releases/download/v1.50.0/hcloud-linux-amd64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin hcloud
+
+      - name: Install matplotlib (chart render is in aggregate job, but preflight checks it)
+        run: pip install --quiet matplotlib
+
+      - name: Materialize SSH key
+        run: |
+          umask 077
+          printf '%s\n' "${{ secrets.BENCHMARK_SSH_PRIVATE_KEY }}" > "${BENCHMARK_SSH_KEY}"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Preflight
+        run: ./benchmarks/scripts/preflight.sh
+
+      - name: Run matrix entry (${{ matrix.tier }} / ${{ matrix.mode }})
+        run: ./benchmarks/scripts/run-matrix-entry.sh "${{ matrix.tier }}" "${{ matrix.mode }}" "${{ github.event.inputs.duration }}" benchmarks/results/_artifact
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-${{ matrix.tier }}-${{ matrix.mode }}
+          path: benchmarks/results/_artifact/*.json
+          if-no-files-found: warn
+
+  aggregate:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need history so the bot commit doesn't trample anything.
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/results-raw
+
+      - name: Stage into benchmarks/results/<date>/
+        id: stage
+        run: |
+          set -euo pipefail
+          date_tag="$(date -u +%Y-%m-%d)"
+          dst="benchmarks/results/${date_tag}"
+          mkdir -p "${dst}"
+          find /tmp/results-raw -name '*.json' -exec cp {} "${dst}/" \;
+          echo "dst=${dst}" >> "$GITHUB_OUTPUT"
+          ls -la "${dst}"
+
+      - name: Render charts
+        run: |
+          pip install --quiet matplotlib
+          python3 benchmarks/scripts/chart.py "${{ steps.stage.outputs.dst }}"
+
+      - name: Commit results
+        run: |
+          set -euo pipefail
+          git config user.name "traceway-bot"
+          git config user.email "bot@tracewayapp.com"
+          git add "${{ steps.stage.outputs.dst }}"
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "bench: hardware benchmark $(date -u +%Y-%m-%d)"
+          git push

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Cross-compile the loadgen for linux/amd64, scp it to the loadgen box, seed a
+# project on the SUT, run the loadgen pointed at the SUT's private IP, and pull
+# the result JSON back.
+#
+# Usage: loadgen-bootstrap.sh <loadgen-public-ip> <sut-private-ip> <sut-public-ip> <duration> <tier> <mode> <out-path> [extra-loadgen-args...]
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=_ssh.sh
+source "${SCRIPT_DIR}/_ssh.sh"
+
+if [[ $# -lt 7 ]]; then
+    echo "usage: $0 <loadgen-public-ip> <sut-private-ip> <sut-public-ip> <duration> <tier> <mode> <out-path> [extra-loadgen-args...]" >&2
+    exit 2
+fi
+LG_IP="$1"; SUT_PRIVATE_IP="$2"; SUT_PUBLIC_IP="$3"; DURATION="$4"; TIER="$5"; MODE="$6"; OUT_PATH="$7"
+shift 7
+
+# 1. Seed a project on the SUT (over its PUBLIC IP from the orchestrator). The
+#    project token + JWT + project id are then handed to the loadgen, which
+#    talks to the SUT over the PRIVATE network for the actual benchmark.
+echo "seeding project via http://${SUT_PUBLIC_IP}/api/register" >&2
+SEED_JSON=$("${SCRIPT_DIR}/seed-project.sh" "http://${SUT_PUBLIC_IP}")
+JWT=$(printf '%s' "${SEED_JSON}" | jq -r '.jwt')
+TOKEN=$(printf '%s' "${SEED_JSON}" | jq -r '.projectToken')
+PROJECT_ID=$(printf '%s' "${SEED_JSON}" | jq -r '.projectId')
+
+# 2. Wait for SSH on the loadgen box and detect its arch so we cross-compile
+#    correctly (CAX* tiers are arm64, CX*/CPX* are amd64).
+echo "waiting for ssh on loadgen ${LG_IP}" >&2
+wait_for_ssh "${LG_IP}"
+LG_UNAME=$(bench_ssh "${LG_IP}" "uname -m" | tr -d '\r\n')
+case "${LG_UNAME}" in
+    x86_64)  GOARCH=amd64 ;;
+    aarch64) GOARCH=arm64 ;;
+    *) echo "unknown loadgen arch '${LG_UNAME}'" >&2; exit 1 ;;
+esac
+
+# 3. Cross-compile loadgen on the orchestrator (laptop / GH runner) for the
+#    loadgen box's arch.
+echo "cross-compiling loadgen for linux/${GOARCH}" >&2
+(
+    cd "${REPO_ROOT}/benchmarks/loadgen"
+    GOOS=linux GOARCH="${GOARCH}" CGO_ENABLED=0 go build -o "loadgen-linux-${GOARCH}" .
+)
+
+bench_ssh "${LG_IP}" "mkdir -p /root/loadgen"
+bench_scp "${REPO_ROOT}/benchmarks/loadgen/loadgen-linux-${GOARCH}" "root@${LG_IP}:/root/loadgen/loadgen"
+bench_ssh "${LG_IP}" "chmod +x /root/loadgen/loadgen"
+
+# 4. Run the benchmark, streaming stderr back so progress is visible. The
+#    loadgen writes JSON to /root/loadgen/result.json on the loadgen box;
+#    we scp it home afterwards.
+echo "running loadgen on ${LG_IP} -> http://${SUT_PRIVATE_IP} (tier=${TIER} mode=${MODE} duration=${DURATION})" >&2
+bench_ssh "${LG_IP}" /root/loadgen/loadgen \
+    --target "http://${SUT_PRIVATE_IP}" \
+    --token "${TOKEN}" \
+    --jwt "${JWT}" \
+    --project-id "${PROJECT_ID}" \
+    --duration "${DURATION}" \
+    --tier "${TIER}" \
+    --mode "${MODE}" \
+    --report-out /root/loadgen/result.json \
+    "$@"
+
+mkdir -p "$(dirname "${OUT_PATH}")"
+bench_scp "root@${LG_IP}:/root/loadgen/result.json" "${OUT_PATH}"
+echo "wrote ${OUT_PATH}" >&2
