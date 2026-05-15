@@ -108,6 +108,7 @@ service:
 	const highlightLanguage = $derived.by(() => {
 		if (!projectWithToken) return go;
 		if (projectWithToken.framework === 'symfony') return php;
+		if (projectWithToken.framework === 'laravel') return php;
 		if (isJsFramework(projectWithToken.framework)) return javascript;
 		return go;
 	});
@@ -414,7 +415,7 @@ service:
 				<CardHeader>
 					<CardTitle>Installation</CardTitle>
 					<CardDescription
-						>Install the required packages{isJs ? '' : projectWithToken?.framework === 'symfony' ? ' using composer' : ' using go get'}.</CardDescription
+						>Install the required packages{isJs ? '' : projectWithToken?.framework === 'symfony' || projectWithToken?.framework === 'laravel' ? ' using composer' : ' using go get'}.</CardDescription
 					>
 				</CardHeader>
 				<CardContent>

@@ -21,6 +21,7 @@ export const SDK_OPTIONS = [
   { value: 'cloudflare', label: 'Cloudflare Workers' },
   { value: 'js-nextjs', label: 'Next.js (OTel)' },
   { value: 'php-symfony', label: 'Symfony' },
+  { value: 'php-laravel', label: 'Laravel' },
   { value: 'flutter', label: 'Flutter' },
   { value: 'android', label: 'Android' },
   { value: 'react-native', label: 'React Native' },
@@ -51,6 +52,7 @@ const PATH_SDK_MAP = {
   'cloudflare': 'cloudflare',
   'nextjs': 'js-nextjs',
   'symfony': 'php-symfony',
+  'laravel': 'php-laravel',
   'flutter': 'flutter',
   'android': 'android',
 }

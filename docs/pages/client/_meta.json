@@ -24,6 +24,7 @@
   "otel": "OpenTelemetry",
   "cloudflare": "Cloudflare Workers",
   "symfony": "Symfony",
+  "laravel": "Laravel",
   "flutter": "Flutter",
   "android": "Android",
   "react-native": "React Native"

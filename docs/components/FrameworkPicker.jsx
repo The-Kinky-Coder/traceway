@@ -35,6 +35,14 @@ const FRAMEWORKS = [
     badge: "production",
   },
   {
+    value: "php-laravel",
+    label: "Laravel",
+    description: "Laravel framework with OpenTelemetry auto-instrumentation.",
+    icon: "/laravel.png",
+    href: "/client/laravel",
+    badge: "production",
+  },
+  {
     value: "go-gin",
     label: "Go Gin",
     description:
