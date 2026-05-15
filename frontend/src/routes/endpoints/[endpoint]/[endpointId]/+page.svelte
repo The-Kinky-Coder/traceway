@@ -272,7 +272,7 @@
 			projectId={projectsState.currentProjectId ?? ''}
 			traceId={traceIdUuidToHex(response.endpoint.id)}
 			distributedTraceId={response.endpoint.distributedTraceId ?? null}
-			spans={response.spans}
+			spans={response.spans ?? []}
 			rootSpan={{
 				id: response.endpoint.spanId ?? response.endpoint.id,
 				name: response.endpoint.endpoint
