@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,7 +25,9 @@ import (
 type oauthController struct{}
 
 type oauthProvidersResponse struct {
-	Providers []string `json:"providers"`
+	Providers            []string          `json:"providers"`
+	ProviderLabels       map[string]string `json:"providerLabels"`
+	PasswordLoginEnabled bool              `json:"passwordLoginEnabled"`
 }
 
 type finishOAuthSetupRequest struct {
@@ -35,11 +38,20 @@ type finishOAuthSetupRequest struct {
 }
 
 func (a oauthController) ListProviders(c *gin.Context) {
+	passwordEnabled := config.Config.DisablePasswordLogin != "true"
 	if services.OAuthService == nil {
-		c.JSON(http.StatusOK, oauthProvidersResponse{Providers: []string{}})
+		c.JSON(http.StatusOK, oauthProvidersResponse{Providers: []string{}, ProviderLabels: map[string]string{}, PasswordLoginEnabled: passwordEnabled})
 		return
 	}
-	c.JSON(http.StatusOK, oauthProvidersResponse{Providers: services.OAuthService.EnabledProviders()})
+	labels := map[string]string{}
+	if name := services.OAuthService.OIDCDisplayName(); name != "" {
+		labels["oidc"] = name
+	}
+	c.JSON(http.StatusOK, oauthProvidersResponse{
+		Providers:            services.OAuthService.EnabledProviders(),
+		ProviderLabels:       labels,
+		PasswordLoginEnabled: passwordEnabled,
+	})
 }
 
 func (a oauthController) Begin(c *gin.Context) {
@@ -49,7 +61,7 @@ func (a oauthController) Begin(c *gin.Context) {
 		return
 	}
 
-	req := c.Request.WithContext(context.WithValue(c.Request.Context(), gothic.ProviderParamKey, provider))
+	req := c.Request.WithContext(context.WithValue(c.Request.Context(), gothic.ProviderParamKey, externalToGothProvider(provider)))
 	gothic.BeginAuthHandler(c.Writer, req)
 }
 
@@ -60,7 +72,7 @@ func (a oauthController) Callback(c *gin.Context) {
 		return
 	}
 
-	req := c.Request.WithContext(context.WithValue(c.Request.Context(), gothic.ProviderParamKey, provider))
+	req := c.Request.WithContext(context.WithValue(c.Request.Context(), gothic.ProviderParamKey, externalToGothProvider(provider)))
 	gothUser, err := gothic.CompleteUserAuth(c.Writer, req)
 	if err != nil {
 		traceway.CaptureException(fmt.Errorf("OAuth complete failed (provider=%s): %w", provider, err))
@@ -86,6 +98,21 @@ func (a oauthController) Callback(c *gin.Context) {
 		return
 	}
 	needsSetup := len(memberships) == 0
+
+	if needsSetup && config.Config.CloudMode != "true" && provider == "oidc" && services.OAuthService.OIDCAutoCreateEnabled() {
+		org, err := a.resolveOIDCOrg(tx, gothUser.RawData)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: resolve org for auto-join: %w", err))
+			return
+		}
+		if org != nil {
+			if _, err := repositories.OrganizationRepository.AddUser(tx, org.Id, user.Id, "user"); err != nil {
+				c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: auto-join org: %w", err))
+				return
+			}
+			needsSetup = false
+		}
+	}
 
 	jwt, err := services.GenerateToken(user.Id, user.Email)
 	if err != nil {
@@ -127,7 +154,8 @@ func (a oauthController) findOrCreateUser(c *gin.Context, provider string, gothU
 		return existing, nil
 	}
 
-	if config.Config.CloudMode != "true" {
+	oidcAutoCreate := provider == "oidc" && services.OAuthService.OIDCAutoCreateEnabled()
+	if config.Config.CloudMode != "true" && !oidcAutoCreate {
 		hasOrg, err := repositories.OrganizationRepository.HasOrganizations(tracewayTx)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: count orgs: %w", err))
@@ -152,6 +180,7 @@ func (a oauthController) findOrCreateUser(c *gin.Context, provider string, gothU
 		c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: create user: %w", err))
 		return nil, err
 	}
+
 	return created, nil
 }
 
@@ -269,6 +298,30 @@ func (a oauthController) FinishSetup(c *gin.Context) {
 func (a oauthController) redirectError(c *gin.Context, code string) {
 	target := fmt.Sprintf("%s/login?error=%s", strings.TrimRight(config.Config.AppBaseURL, "/"), url.QueryEscape(code))
 	c.Redirect(http.StatusSeeOther, target)
+}
+
+func (a oauthController) resolveOIDCOrg(tx *sql.Tx, rawData map[string]interface{}) (*models.Organization, error) {
+	if claim := services.OAuthService.OIDCOrgClaim(); claim != "" {
+		if val, ok := rawData[claim]; ok {
+			if orgName, ok := val.(string); ok && orgName != "" {
+				org, err := repositories.OrganizationRepository.FindByName(tx, orgName)
+				if err != nil {
+					return nil, err
+				}
+				if org != nil {
+					return org, nil
+				}
+			}
+		}
+	}
+	return repositories.OrganizationRepository.FindFirst(tx)
+}
+
+func externalToGothProvider(provider string) string {
+	if provider == "oidc" {
+		return "openid-connect"
+	}
+	return provider
 }
 
 var OAuthController = oauthController{}
