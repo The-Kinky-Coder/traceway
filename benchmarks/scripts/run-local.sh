@@ -67,12 +67,18 @@ fi
 export BENCH_MODES_PLAN="${MODES}"
 "${SCRIPT_DIR}/preflight.sh"
 
-date_tag="$(date -u +%Y-%m-%d)"
+# Single, dispatch-scoped results folder. Wiped at the start so each run's
+# committed output reflects only that run's matrix entries — no
+# cross-dispatch mixing (which was the failure mode of the date-folder
+# layout: two dispatches landing on the same day silently combined into one
+# summary.md). Cross-run comparison happens via `git log`, not adjacent
+# folders.
 if [[ "${COMMIT}" -eq 1 ]]; then
-    OUT_DIR="${REPO_ROOT}/benchmarks/results/${date_tag}"
+    OUT_DIR="${REPO_ROOT}/benchmarks/results/latest"
 else
-    OUT_DIR="${REPO_ROOT}/benchmarks/results/${date_tag}-local"
+    OUT_DIR="${REPO_ROOT}/benchmarks/results/latest-local"
 fi
+rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 echo "results dir: ${OUT_DIR}" >&2
 

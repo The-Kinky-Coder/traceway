@@ -143,12 +143,16 @@ jobs:
         with:
           path: /tmp/results-raw
 
-      - name: Stage into benchmarks/results/<date>/
+      - name: Stage into benchmarks/results/latest/
         id: stage
         run: |
           set -euo pipefail
-          date_tag="$(date -u +%Y-%m-%d)"
-          dst="benchmarks/results/${date_tag}"
+          # Always overwrite `latest/` so each dispatch reports only its own
+          # matrix entries. Cross-run comparison happens via `git log`, not
+          # via cumulative same-folder data — the old date-stamped folder
+          # approach silently mixed dispatches that landed on the same day.
+          dst="benchmarks/results/latest"
+          rm -rf "${dst}"
           mkdir -p "${dst}"
           find /tmp/results-raw -name '*.json' -exec cp {} "${dst}/" \;
           echo "dst=${dst}" >> "$GITHUB_OUTPUT"
@@ -167,21 +171,10 @@ jobs:
 
           staged="${{ steps.stage.outputs.dst }}"
 
-          # The benchmark run takes 2-3 hours, so by the time we get here our
-          # checkout is almost always behind main. Sync to whatever main looks
-          # like *right now* before committing.
-          #
-          # CRITICAL: previously this was just `git reset --hard origin/main`,
-          # which assumed the staged dir contained only untracked new files.
-          # That assumption breaks when an earlier dispatch today already
-          # committed `benchmarks/results/<date>/` — our re-rendered charts +
-          # summary.md become tracked-but-modified, and `reset --hard` reverts
-          # them to the old (incomplete) versions. Only the genuinely-new
-          # JSON survives, producing a misleading partial commit.
-          #
-          # Fix: copy the staged dir aside, reset to main, then restore. Our
-          # versions always win on conflict, which is what we want — they
-          # reflect the union of all matrix entries that have run today.
+          # Copy our staged data aside before touching git state. We always
+          # need to restore it after `reset --hard` regardless of what main
+          # currently has at `latest/` — this dispatch's data is the new
+          # source of truth.
           tmp_staged="$(mktemp -d)/staged"
           cp -a "${staged}" "${tmp_staged}"
 
@@ -189,14 +182,21 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
+          # Wipe whatever main had at `latest/` (probably a prior dispatch's
+          # results) and replace it with this dispatch's full output. Using
+          # rm + cp + `git add -A` so deletions are captured: if the prior
+          # commit had `ccx33-pgch-metrics.json` but this dispatch only ran
+          # sqlite, the pgch JSON gets staged for deletion. The committed
+          # `latest/` always reflects exactly one dispatch, never a union.
+          rm -rf "${staged}"
           mkdir -p "${staged}"
           cp -a "${tmp_staged}/." "${staged}/"
           rm -rf "${tmp_staged%/staged}"
 
-          git add "${staged}"
+          git add -A "${staged}"
           if git diff --cached --quiet; then
             echo "nothing to commit"
             exit 0
           fi
-          git commit -m "bench: hardware benchmark $(date -u +%Y-%m-%d)"
+          git commit -m "bench: hardware benchmark $(date -u +%Y-%m-%d) (latest)"
           git push

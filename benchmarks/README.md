@@ -156,8 +156,11 @@ works, the full matrix works.
 ```
 
 4 tiers × 2 modes × 3 signals, default `--duration 30m`. Output goes to
-`benchmarks/results/<YYYY-MM-DD>-local/` — the `-local` suffix exists so
-dev runs never get confused with CI runs and never get accidentally committed.
+`benchmarks/results/latest-local/`, which is wiped at the start of every
+run so each dispatch's output stands alone — no silent cross-run mixing
+that the old date-folder layout produced. The `-local` suffix keeps dev
+runs separate from the committed `latest/` so you don't accidentally
+clobber CI's data.
 
 ### Other useful invocations
 
@@ -195,8 +198,14 @@ Required GitHub secrets:
   `benchmark-key`.
 
 After the matrix completes, an `aggregate` job downloads all artifacts, runs
-`chart.py`, and commits `benchmarks/results/<YYYY-MM-DD>/` to `main` via a bot
-commit. No PR — it's a generated artifact.
+`chart.py`, and commits `benchmarks/results/latest/` to `main` via a bot
+commit (`git add -A`, so files from a prior dispatch that aren't in this one
+get staged for deletion). No PR — it's a generated artifact. **The
+committed `latest/` always reflects exactly one dispatch**; comparing to
+previous runs is `git log -- benchmarks/results/latest/` or
+`git show <sha>:benchmarks/results/latest/summary.md`. Dated historical
+folders (`benchmarks/results/2026-05-15/` etc.) from before this layout
+change are kept in git for reference but are no longer written to.
 
 ## Running against managed ClickHouse
 
