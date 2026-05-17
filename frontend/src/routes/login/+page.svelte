@@ -128,7 +128,7 @@
                 </Alert>
             {/if}
             <OauthButtons bind:passwordLoginEnabled bind:loaded={providersLoaded} />
-            {#if passwordLoginEnabled}
+            {#if providersLoaded && passwordLoginEnabled}
             <form onsubmit={(e) => { e.preventDefault(); handleLogin(); }} class="grid w-full items-center gap-4">
                 <div class="flex flex-col space-y-1.5">
                     <Label for="email">Email</Label>
