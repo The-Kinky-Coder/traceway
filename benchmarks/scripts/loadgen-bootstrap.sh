@@ -56,6 +56,13 @@ bench_ssh "${LG_IP}" "chmod +x /root/loadgen/loadgen"
 #    so the read-probe scenario can hit dashboard endpoints; the throughput
 #    scenario ignores them.
 echo "running loadgen on ${LG_IP} -> http://${SUT_PRIVATE_IP} (tier=${TIER} mode=${MODE} signal=${SIGNAL} duration=${DURATION})" >&2
+
+# Capture the loadgen's exit code without letting set -e abort the script.
+# The loadgen now writes its result.json incrementally after every step, so
+# even if it dies mid-run (OOM, SSH drop, panic) the file on the SUT has
+# everything up to the last completed step. We must scp regardless of the
+# loadgen's exit status to avoid losing that partial data.
+loadgen_rc=0
 bench_ssh "${LG_IP}" /root/loadgen/loadgen \
     --target "http://${SUT_PRIVATE_IP}" \
     --token "${TOKEN}" \
@@ -66,8 +73,17 @@ bench_ssh "${LG_IP}" /root/loadgen/loadgen \
     --tier "${TIER}" \
     --mode "${MODE}" \
     --report-out /root/loadgen/result.json \
-    "$@"
+    "$@" || loadgen_rc=$?
+
+if [[ "${loadgen_rc}" -ne 0 ]]; then
+    echo "loadgen exited with status ${loadgen_rc} — attempting to fetch any partial result.json from the loadgen box" >&2
+fi
 
 mkdir -p "$(dirname "${OUT_PATH}")"
-bench_scp "root@${LG_IP}:/root/loadgen/result.json" "${OUT_PATH}"
-echo "wrote ${OUT_PATH}" >&2
+if bench_scp "root@${LG_IP}:/root/loadgen/result.json" "${OUT_PATH}" 2>/dev/null; then
+    echo "wrote ${OUT_PATH}" >&2
+else
+    echo "no result.json on loadgen box (loadgen died before writing the first checkpoint)" >&2
+fi
+
+exit "${loadgen_rc}"

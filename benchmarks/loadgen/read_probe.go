@@ -36,7 +36,12 @@ type readProbeResult struct {
 // issues one read probe. If the probe times out, errors, or exceeds
 // cfg.readThresholdMs, the step fails and the loop stops without ingesting
 // further.
-func runReadProbe(ctx context.Context, cfg config, ing *ingester, ingestStats *latencyTracker, client *http.Client) readProbeResult {
+// readProbeCheckpoint is invoked after every fill-level step so the caller
+// can persist a partial report — we never want to lose progress when the
+// process dies mid-run.
+type readProbeCheckpoint func(readProbeResult)
+
+func runReadProbe(ctx context.Context, cfg config, ing *ingester, ingestStats *latencyTracker, client *http.Client, checkpoint readProbeCheckpoint) readProbeResult {
 	res := readProbeResult{
 		ReadPath:        readPathForSignal(cfg.signal),
 		ReadThresholdMs: cfg.readThresholdMs,
@@ -84,6 +89,9 @@ func runReadProbe(ctx context.Context, cfg config, ing *ingester, ingestStats *l
 		}
 		if ctx.Err() != nil {
 			res.Steps = append(res.Steps, step)
+			if checkpoint != nil {
+				checkpoint(res)
+			}
 			break
 		}
 
@@ -107,6 +115,9 @@ func runReadProbe(ctx context.Context, cfg config, ing *ingester, ingestStats *l
 		fmt.Fprintf(stderrPrefix(), "read-probe target=%d read=%.0fms ok=%t passed=%t %s\n",
 			target, latencyMs, step.ReadOk, step.Passed, step.FailReason)
 		res.Steps = append(res.Steps, step)
+		if checkpoint != nil {
+			checkpoint(res)
+		}
 		if !step.Passed {
 			break
 		}

@@ -114,8 +114,11 @@ def render_throughput_detail(runs: list[dict], signal: str, out: Path) -> None:
 
     for run in sorted(runs, key=lambda r: (tier_rank(r["tier"]), mode_rank(r["mode"]))):
         steps = (run.get("phase2") or {}).get("steps") or []
-        xs = [s["requestRate"] for s in steps if s.get("ingest")]
-        ys = [s["ingest"]["p99"] for s in steps if s.get("ingest")]
+        # Bisection appends steps in execution order, not rate order. Sort
+        # by requestRate so the line draws monotonically across the X axis.
+        steps = sorted([s for s in steps if s.get("ingest")], key=lambda s: s.get("requestRate", 0))
+        xs = [s["requestRate"] for s in steps]
+        ys = [s["ingest"]["p99"] for s in steps]
         if not xs:
             continue
         ax.plot(xs, ys, marker="o", label=f"{run['tier']} / {run['mode']}")

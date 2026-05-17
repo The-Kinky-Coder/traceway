@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/time/rate"
 )
@@ -25,9 +26,13 @@ type ingester struct {
 	// rng pool: each worker grabs one to avoid contending on the global source
 	rngPool sync.Pool
 
-	// workerWg + workerCancel let the ramp resize the pool between steps.
+	// Two contexts let the ramp stop accepting new requests at step boundaries
+	// without killing in-flight HTTP. acceptCancel ends the limiter.Wait loop;
+	// the request ctx (parent of acceptCtx) remains alive so HTTP responses
+	// can complete and be counted. Stop() forces a hard cancel by deriving the
+	// hard-stop ctx from the parent.
 	workerWg     *sync.WaitGroup
-	workerCancel context.CancelFunc
+	acceptCancel context.CancelFunc
 }
 
 func newIngester(cfg config, client *http.Client, stats *latencyTracker) (*ingester, error) {
@@ -100,12 +105,14 @@ func (i *ingester) SnapshotAndResetItems() (attempted, rejected int64) {
 	return
 }
 
-// Start launches the worker pool sized for the current request rate. Call Stop
-// before changing the worker count via another Start.
+// Start launches the worker pool sized for the current request rate. The
+// passed ctx is used directly for HTTP requests so in-flight requests survive
+// across step boundaries; the limiter loop uses a derived acceptCtx that
+// StopAccepting can cancel independently.
 func (i *ingester) Start(ctx context.Context) {
-	workerCtx, cancel := context.WithCancel(ctx)
+	acceptCtx, cancelAccept := context.WithCancel(ctx)
 	wg := &sync.WaitGroup{}
-	i.workerCancel = cancel
+	i.acceptCancel = cancelAccept
 	i.workerWg = wg
 
 	workers := workerCountFor(i.RequestRate())
@@ -116,37 +123,68 @@ func (i *ingester) Start(ctx context.Context) {
 			rng := i.rngPool.Get().(*rand.Rand)
 			defer i.rngPool.Put(rng)
 			for {
-				if err := i.limiter.Wait(workerCtx); err != nil {
+				if err := i.limiter.Wait(acceptCtx); err != nil {
 					return
 				}
 				batchSize := int(i.batchSize.Load())
-				sendOneOTLP(workerCtx, i.client, i.cfg, i.sender, rng, batchSize, i.stats, &i.attemptedItems, &i.rejectedItems)
+				// HTTP uses the parent ctx (not acceptCtx) so requests in
+				// flight when StopAccepting fires aren't canceled mid-flight.
+				sendOneOTLP(ctx, i.client, i.cfg, i.sender, rng, batchSize, i.stats, &i.attemptedItems, &i.rejectedItems)
 			}
 		}()
 	}
 }
 
+// StopAccepting tells the worker pool to stop pulling from the rate limiter.
+// In-flight HTTP requests continue under the parent ctx until they finish or
+// the parent ctx is canceled. Pair with WaitForDrain to give them a grace
+// window before the next step starts.
+func (i *ingester) StopAccepting() {
+	if i.acceptCancel != nil {
+		i.acceptCancel()
+	}
+}
+
+// WaitForDrain blocks up to d for the worker pool to finish any in-flight
+// HTTP requests. Returns earlier when all workers exit.
+func (i *ingester) WaitForDrain(d time.Duration) {
+	if i.workerWg == nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() { i.workerWg.Wait(); close(done) }()
+	if d <= 0 {
+		<-done
+		return
+	}
+	select {
+	case <-done:
+	case <-time.After(d):
+	}
+}
+
+// Stop ends acceptance and waits forever for the pool to drain. The parent
+// ctx still gates HTTP cancellation, so this won't hang past the overall run
+// deadline.
 func (i *ingester) Stop() {
-	if i.workerCancel != nil {
-		i.workerCancel()
-	}
-	if i.workerWg != nil {
-		i.workerWg.Wait()
-	}
-	i.workerCancel = nil
+	i.StopAccepting()
+	i.WaitForDrain(0)
+	i.acceptCancel = nil
 	i.workerWg = nil
 }
 
-// workerCountFor scales worker count with request rate. 256 workers idling on
-// a 5 req/sec limiter is wasteful; on the other hand, a 400 req/sec target
-// with 8 workers + a 200ms p99 leaves the limiter starved.
+// workerCountFor scales worker count with request rate. The headroom is
+// generous because high-latency steps (multi-second P50) can otherwise starve
+// the rate limiter: at rps=5 with P50=4s, 10 workers only deliver 2.5 req/sec.
+// 30 seconds of in-flight headroom guarantees we hit target rate unless the
+// SUT is truly past its cliff.
 func workerCountFor(rps float64) int {
-	n := int(rps * 2)
-	if n < 8 {
-		n = 8
+	n := int(rps * 30)
+	if n < 32 {
+		n = 32
 	}
-	if n > 256 {
-		n = 256
+	if n > 512 {
+		n = 512
 	}
 	return n
 }

@@ -20,17 +20,42 @@ fi
 TIER="$1"
 RUN_ID="$2"
 LOCATION="${3:-nbg1}"
-LOADGEN_TIER="${LOADGEN_TIER:-cax11}"
 IMAGE="${BENCH_IMAGE:-debian-12}"
+
+# Loadgen tier: pick the cheapest shared-vCPU instance available in the
+# target location. CAX (ARM) is EU-only; CPX (x86) is global. Override with
+# LOADGEN_TIER if you want a beefier loadgen box.
+case "${LOCATION}" in
+    nbg1|fsn1|hel1) LOADGEN_DEFAULT="cax11" ;;   # ARM, cheaper, EU only
+    ash|hil)        LOADGEN_DEFAULT="cpx11" ;;   # x86, available in US
+    sin)            LOADGEN_DEFAULT="cpx11" ;;   # x86, safest in Singapore
+    *)              LOADGEN_DEFAULT="cpx11" ;;   # x86 is the safe global default
+esac
+LOADGEN_TIER="${LOADGEN_TIER:-${LOADGEN_DEFAULT}}"
 NET_NAME="bench-net-${RUN_ID}"
 SUT_NAME="bench-sut-${RUN_ID}"
 LOADGEN_NAME="bench-loadgen-${RUN_ID}"
 
+# Hetzner private networks live in a "network zone" that spans several
+# physical locations. A subnet in one zone cannot host servers from another,
+# so the zone must match the LOCATION the servers will be created in.
+# Reference: https://docs.hetzner.cloud/#network-zones
+case "${LOCATION}" in
+    nbg1|fsn1|hel1)        NETWORK_ZONE="eu-central" ;;
+    ash)                   NETWORK_ZONE="us-east" ;;
+    hil)                   NETWORK_ZONE="us-west" ;;
+    sin)                   NETWORK_ZONE="ap-southeast" ;;
+    *)
+        echo "unknown location '${LOCATION}', defaulting network-zone to eu-central — fix me if this is wrong" >&2
+        NETWORK_ZONE="eu-central"
+        ;;
+esac
+
 # Create a /24 private network so SUT and loadgen can talk over 10.0.0.x.
 if ! hcloud network describe "${NET_NAME}" >/dev/null 2>&1; then
-    echo "creating network ${NET_NAME}" >&2
+    echo "creating network ${NET_NAME} in zone ${NETWORK_ZONE}" >&2
     hcloud network create --name "${NET_NAME}" --ip-range 10.0.0.0/24 >/dev/null
-    hcloud network add-subnet "${NET_NAME}" --network-zone eu-central --type cloud --ip-range 10.0.0.0/24 >/dev/null
+    hcloud network add-subnet "${NET_NAME}" --network-zone "${NETWORK_ZONE}" --type cloud --ip-range 10.0.0.0/24 >/dev/null
 fi
 NET_ID=$(hcloud network describe "${NET_NAME}" -o format='{{.ID}}')
 
