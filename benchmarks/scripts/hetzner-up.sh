@@ -20,6 +20,13 @@ fi
 TIER="$1"
 RUN_ID="$2"
 LOCATION="${3:-nbg1}"
+
+# Trim leading/trailing whitespace from positional args. CI inputs and shell
+# variables occasionally arrive with a trailing space (e.g. "hil ") which then
+# fails downstream API calls with cryptic "datacenter not found" errors.
+TIER="$(printf '%s' "${TIER}" | xargs)"
+RUN_ID="$(printf '%s' "${RUN_ID}" | xargs)"
+LOCATION="$(printf '%s' "${LOCATION}" | xargs)"
 IMAGE="${BENCH_IMAGE:-debian-12}"
 
 # Loadgen tier: pick the cheapest shared-vCPU instance available in the
