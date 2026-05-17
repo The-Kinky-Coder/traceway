@@ -72,10 +72,16 @@ func (r *finalReport) computeHeadline() {
 	}
 }
 
+// phaseCheckpoint is invoked after every step in the throughput phases so the
+// caller can persist a partial report — we never want to lose progress when
+// the process dies mid-run.
+type phaseCheckpoint func(phaseResult)
+
 // runBatchSizeRamp holds requestRate fixed (phase1FixedRate) and grows batch
 // size step by step. Stops at the first failing step. Returns a phaseResult
-// whose MaxBatchSize is the largest batch that passed.
-func runBatchSizeRamp(ctx context.Context, cfg config, ing *ingester, ingest *latencyTracker) phaseResult {
+// whose MaxBatchSize is the largest batch that passed. Calls `checkpoint`
+// after each step (after both pass and fail) so partial state is durable.
+func runBatchSizeRamp(ctx context.Context, cfg config, ing *ingester, ingest *latencyTracker, checkpoint phaseCheckpoint) phaseResult {
 	res := phaseResult{
 		Kind:             "batch-size-ramp",
 		FixedRequestRate: cfg.phase1FixedRate,
@@ -92,18 +98,24 @@ func runBatchSizeRamp(ctx context.Context, cfg config, ing *ingester, ingest *la
 		res.Steps = append(res.Steps, s)
 		fmt.Fprintf(stderrPrefix(), "phase1 step %d: batch=%d rate=%.1f items/s=%.0f p99=%.0fms err=%.2f%% passed=%t %s\n",
 			s.Step, s.BatchSize, s.RequestRate, s.ActualItemsPerSec, s.Ingest.P99, s.Ingest.ErrRate*100, s.Passed, s.FailReason)
+		if s.Passed {
+			res.MaxBatchSize = batch
+		}
+		if checkpoint != nil {
+			checkpoint(res)
+		}
 		if !s.Passed {
 			break
 		}
-		res.MaxBatchSize = batch
 	}
 
 	return res
 }
 
 // runRequestRateRamp holds batchSize fixed at min(phase1.MaxBatchSize, cfg.phase2BatchCap)
-// and grows request rate step by step.
-func runRequestRateRamp(ctx context.Context, cfg config, ing *ingester, ingest *latencyTracker, phase1 phaseResult) phaseResult {
+// and grows request rate step by step. Calls `checkpoint` after each coarse
+// step and after each bisection step so partial state is durable.
+func runRequestRateRamp(ctx context.Context, cfg config, ing *ingester, ingest *latencyTracker, phase1 phaseResult, checkpoint phaseCheckpoint) phaseResult {
 	batch := phase1.MaxBatchSize
 	if batch <= 0 {
 		batch = cfg.phase2BatchCap
@@ -135,12 +147,17 @@ func runRequestRateRamp(ctx context.Context, cfg config, ing *ingester, ingest *
 		res.Steps = append(res.Steps, s)
 		fmt.Fprintf(stderrPrefix(), "phase2 step %d: batch=%d rate=%.1f items/s=%.0f p99=%.0fms err=%.2f%% passed=%t %s\n",
 			s.Step, s.BatchSize, s.RequestRate, s.ActualItemsPerSec, s.Ingest.P99, s.Ingest.ErrRate*100, s.Passed, s.FailReason)
+		if s.Passed {
+			res.MaxRequestRate = rate
+			lastPassRate = rate
+		}
+		if checkpoint != nil {
+			checkpoint(res)
+		}
 		if !s.Passed {
 			firstFailRate = rate
 			break
 		}
-		res.MaxRequestRate = rate
-		lastPassRate = rate
 	}
 
 	// Bisection refinement. After the coarse ramp finds an adjacent
@@ -169,6 +186,9 @@ func runRequestRateRamp(ctx context.Context, cfg config, ing *ingester, ingest *
 				res.MaxRequestRate = mid
 			} else {
 				firstFailRate = mid
+			}
+			if checkpoint != nil {
+				checkpoint(res)
 			}
 		}
 	}

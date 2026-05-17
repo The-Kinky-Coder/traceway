@@ -154,9 +154,25 @@ func main() {
 		StartedAt: startedAt.Format(time.RFC3339),
 	}
 
+	// Persist a partial report after every step so a mid-run crash, OOM,
+	// or dropped SSH session still leaves usable data on disk. Atomic
+	// write via tempfile + rename means concurrent readers (and any partial
+	// kill of the writer process itself) never see a half-written file.
+	writeCheckpoint := func() {
+		out.EndedAt = time.Now().UTC().Format(time.RFC3339)
+		out.computeHeadline()
+		if err := writeReportAtomic(cfg.reportOut, &out); err != nil {
+			fmt.Fprintf(os.Stderr, "checkpoint write failed: %v\n", err)
+		}
+	}
+
 	switch cfg.scenario {
 	case "throughput":
-		phase1 := runBatchSizeRamp(ctx, cfg, ing, ingestStats)
+		phase1 := runBatchSizeRamp(ctx, cfg, ing, ingestStats, func(p phaseResult) {
+			out.Phase1 = &p
+			writeCheckpoint()
+		})
+		out.Phase1 = &phase1
 		// Cool-down between phases: Phase 1's last step often runs the SUT at
 		// 70-99% of capacity, leaving its internal queues (CH merges, PG WAL,
 		// HTTP handler pool) saturated. Jumping straight into Phase 2 with the
@@ -170,28 +186,23 @@ func main() {
 			case <-ctx.Done():
 			}
 		}
-		phase2 := runRequestRateRamp(ctx, cfg, ing, ingestStats, phase1)
-		out.Phase1 = &phase1
+		phase2 := runRequestRateRamp(ctx, cfg, ing, ingestStats, phase1, func(p phaseResult) {
+			out.Phase2 = &p
+			writeCheckpoint()
+		})
 		out.Phase2 = &phase2
 	case "read-probe":
-		probe := runReadProbe(ctx, cfg, ing, ingestStats, httpClient)
+		probe := runReadProbe(ctx, cfg, ing, ingestStats, httpClient, func(p readProbeResult) {
+			out.ReadProbe = &p
+			writeCheckpoint()
+		})
 		out.ReadProbe = &probe
 	}
-	out.EndedAt = time.Now().UTC().Format(time.RFC3339)
-	out.computeHeadline()
 
-	f, err := os.Create(cfg.reportOut)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "create %s: %v\n", cfg.reportOut, err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(&out); err != nil {
-		fmt.Fprintf(os.Stderr, "write %s: %v\n", cfg.reportOut, err)
-		os.Exit(1)
-	}
+	// Final write — even if everything above ran cleanly, do one last
+	// atomic rewrite so the file reflects the EndedAt and headline.
+	writeCheckpoint()
+
 	switch cfg.scenario {
 	case "throughput":
 		fmt.Fprintf(os.Stderr, "wrote %s: signal=%s max sustainable %s/sec = %.0f\n",
@@ -200,6 +211,29 @@ func main() {
 		fmt.Fprintf(os.Stderr, "wrote %s: signal=%s max fill level passed = %d rows\n",
 			cfg.reportOut, cfg.signal, out.MaxFillLevelPassed)
 	}
+}
+
+// writeReportAtomic encodes the report into a sibling .tmp file and renames
+// it over the destination, so a kill or disk-full mid-write can't leave a
+// half-encoded file. Called after every step.
+func writeReportAtomic(path string, report *finalReport) error {
+	tmp := path + ".tmp"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(report); err != nil {
+		f.Close()
+		os.Remove(tmp)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 func parseInt64s(s string) ([]int64, error) {
