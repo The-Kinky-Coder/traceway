@@ -156,6 +156,7 @@
                 </Alert>
             {/if}
             <OauthButtons bind:passwordLoginEnabled bind:loaded={providersLoaded} />
+            {#if providersLoaded && passwordLoginEnabled}
             <form onsubmit={(e) => { e.preventDefault(); handleRegister(); }} class="grid w-full items-center gap-4">
                 <div class="flex flex-col space-y-1.5">
                     <Label for="email">Email</Label>
@@ -231,6 +232,7 @@
                     {/if}
                 </Button>
             </form>
+            {/if}
         </CardContent>
 
         {#if __CLOUD_MODE__}

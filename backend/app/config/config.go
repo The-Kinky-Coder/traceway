@@ -60,6 +60,11 @@ type Cfg struct {
 	OIDCAutoCreateUsers string
 	OIDCOrgClaim        string
 	OIDCExtraScopes     string
+	OIDCRoleClaim       string
+	OIDCRoleMap         string
+	OIDCAuthURL         string
+	OIDCTokenURL        string
+	OIDCUserInfoURL     string
 
 	DisablePasswordLogin string
 }
@@ -127,6 +132,11 @@ func LoadFromEnv() *Cfg {
 		OIDCAutoCreateUsers: os.Getenv("OIDC_AUTO_CREATE_USERS"),
 		OIDCOrgClaim:        os.Getenv("OIDC_ORG_CLAIM"),
 		OIDCExtraScopes:     os.Getenv("OIDC_EXTRA_SCOPES"),
+		OIDCRoleClaim:       os.Getenv("OIDC_ROLE_CLAIM"),
+		OIDCRoleMap:         os.Getenv("OIDC_ROLE_MAP"),
+		OIDCAuthURL:         os.Getenv("OIDC_AUTH_URL"),
+		OIDCTokenURL:        os.Getenv("OIDC_TOKEN_URL"),
+		OIDCUserInfoURL:     os.Getenv("OIDC_USER_INFO_URL"),
 
 		DisablePasswordLogin: os.Getenv("DISABLE_PASSWORD_LOGIN"),
 	}

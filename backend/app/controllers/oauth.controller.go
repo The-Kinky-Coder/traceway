@@ -92,6 +92,11 @@ func (a oauthController) Callback(c *gin.Context) {
 
 	tx := middleware.GetTx(c)
 
+	var mappedRole string
+	if provider == "oidc" && services.OAuthService.OIDCRoleClaimEnabled() {
+		mappedRole = services.OAuthService.ResolveRole(gothUser.RawData)
+	}
+
 	memberships, err := repositories.OrganizationRepository.FindByUserIdWithRoles(tx, user.Id)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: load memberships: %w", err))
@@ -106,11 +111,25 @@ func (a oauthController) Callback(c *gin.Context) {
 			return
 		}
 		if org != nil {
-			if _, err := repositories.OrganizationRepository.AddUser(tx, org.Id, user.Id, "user"); err != nil {
+			role := "user"
+			if mappedRole != "" {
+				role = mappedRole
+			}
+			if _, err := repositories.OrganizationRepository.AddUser(tx, org.Id, user.Id, role); err != nil {
 				c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: auto-join org: %w", err))
 				return
 			}
 			needsSetup = false
+		}
+	} else if mappedRole != "" && !needsSetup {
+		for _, m := range memberships {
+			if m.Role == "owner" {
+				continue
+			}
+			if err := repositories.OrganizationRepository.UpdateUserRole(tx, m.Id, user.Id, mappedRole); err != nil {
+				c.AbortWithError(http.StatusInternalServerError, traceway.NewStackTraceErrorf("OAuth callback: sync mapped role: %w", err))
+				return
+			}
 		}
 	}
 
