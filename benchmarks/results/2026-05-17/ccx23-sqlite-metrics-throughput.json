@@ -1,0 +1,91 @@
+{
+  "tier": "ccx23",
+  "mode": "sqlite",
+  "signal": "metrics",
+  "scenario": "throughput",
+  "startedAt": "2026-05-17T04:22:07Z",
+  "endedAt": "2026-05-17T04:31:07Z",
+  "phase1": {
+    "kind": "batch-size-ramp",
+    "fixedRequestRate": 5,
+    "steps": [
+      {
+        "step": 1,
+        "batchSize": 256,
+        "requestRate": 5,
+        "attemptedItemsPerSec": 1279.986903515333,
+        "actualItemsPerSec": 1279.986903515333,
+        "rejected": 0,
+        "ingest": {
+          "p50": 40.753698,
+          "p95": 45.544817,
+          "p99": 52.486374000000005,
+          "ok": 600,
+          "errors": 0,
+          "errRate": 0
+        },
+        "passed": true
+      },
+      {
+        "step": 2,
+        "batchSize": 1024,
+        "requestRate": 5,
+        "attemptedItemsPerSec": 3861.086396116327,
+        "actualItemsPerSec": 3861.086396116327,
+        "rejected": 0,
+        "ingest": {
+          "p50": 127.52777200000001,
+          "p95": 148.80496300000001,
+          "p99": 170.27066799999997,
+          "ok": 453,
+          "errors": 0,
+          "errRate": 0
+        },
+        "passed": true
+      },
+      {
+        "step": 3,
+        "batchSize": 4096,
+        "requestRate": 5,
+        "attemptedItemsPerSec": 14272.802562933364,
+        "actualItemsPerSec": 94.52187127770439,
+        "rejected": 0,
+        "ingest": {
+          "p50": 25562.826459,
+          "p95": 25562.826459,
+          "p99": 25562.826459,
+          "ok": 3,
+          "errors": 450,
+          "errRate": 0.9933774834437086
+        },
+        "passed": false,
+        "failReason": "combined error rate 99.34% (http 99.34% + rejected 0.00%) \u003e 5.00% threshold"
+      }
+    ],
+    "maxBatchSize": 1024
+  },
+  "phase2": {
+    "kind": "request-rate-ramp",
+    "fixedBatchSize": 1024,
+    "steps": [
+      {
+        "step": 1,
+        "batchSize": 1024,
+        "requestRate": 1,
+        "attemptedItemsPerSec": 960.9806008659789,
+        "actualItemsPerSec": 0,
+        "rejected": 0,
+        "ingest": {
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "ok": 0,
+          "errors": 122,
+          "errRate": 1
+        },
+        "passed": false,
+        "failReason": "combined error rate 100.00% (http 100.00% + rejected 0.00%) \u003e 5.00% threshold"
+      }
+    ]
+  }
+}
