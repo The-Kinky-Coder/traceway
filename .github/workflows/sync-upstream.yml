@@ -1,0 +1,111 @@
+name: Sync upstream main → my-version
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # 04:00 UTC daily
+  workflow_dispatch:        # allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout my-version
+        uses: actions/checkout@v4
+        with:
+          ref: my-version
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/tracewayapp/traceway.git
+          git fetch upstream main
+
+      - name: Attempt merge
+        id: merge
+        run: |
+          if git merge --no-edit upstream/main; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            git merge --abort
+          fi
+
+      - name: Push merged branch
+        if: steps.merge.outputs.status == 'success'
+        run: git push origin my-version
+
+      - name: Check for existing conflict issue
+        if: steps.merge.outputs.status == 'conflict'
+        id: existing_issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_number=$(gh issue list \
+            --label "upstream-sync-conflict" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          echo "number=${issue_number}" >> "$GITHUB_OUTPUT"
+
+      - name: Open conflict alert issue
+        if: steps.merge.outputs.status == 'conflict' && steps.existing_issue.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          gh issue create \
+            --title "⚠️ Upstream sync conflict: my-version ← tracewayapp/traceway main" \
+            --label "upstream-sync-conflict" \
+            --body "$(cat <<'EOF'
+          ## Upstream sync failed — manual resolution needed
+
+          The automated daily sync of \`tracewayapp/traceway\` main into \`my-version\` hit a merge conflict and was aborted.
+
+          **Upstream commit:** \`${UPSTREAM_SHA}\`
+          **Triggered by:** workflow run ${{ github.run_id }}
+
+          ### To resolve locally
+
+          \`\`\`bash
+          git fetch upstream main
+          git checkout my-version
+          git merge upstream/main
+          # fix conflicts, then:
+          git add .
+          git commit
+          git push origin my-version
+          \`\`\`
+
+          Once pushed, close this issue. The next scheduled sync will reopen it only if a new conflict appears.
+          EOF
+          )"
+
+      - name: Comment on existing conflict issue (new run)
+        if: steps.merge.outputs.status == 'conflict' && steps.existing_issue.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          gh issue comment ${{ steps.existing_issue.outputs.number }} \
+            --body "Sync still conflicting as of run ${{ github.run_id }} (upstream \`${UPSTREAM_SHA}\`). Manual resolution still needed."
+
+      - name: Report outcome in summary
+        if: always()
+        run: |
+          if [ "${{ steps.merge.outputs.status }}" = "success" ]; then
+            echo "### ✅ Sync succeeded" >> "$GITHUB_STEP_SUMMARY"
+            echo "Merged \`upstream/main\` into \`my-version\` and pushed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ Sync conflicted" >> "$GITHUB_STEP_SUMMARY"
+            echo "Merge was aborted. A GitHub issue has been opened (or updated) with resolution steps." >> "$GITHUB_STEP_SUMMARY"
+          fi
