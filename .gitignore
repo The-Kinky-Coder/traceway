@@ -47,11 +47,11 @@ backend/static/dist/
 /examples/nestjs-otel/node_modules
 /website/.wrangler
 
-# Benchmark tooling: built binaries and laptop-only result dirs.
-# Real CI-produced result dirs (e.g. benchmarks/results/2026-05-12/) are
-# committed; the -local suffix marks dev runs we never want to push.
+# Benchmark tooling: built binaries and runner-only scratch dirs. The
+# committed result dirs are benchmarks/results-throughput/ and
+# benchmarks/results-probe/; everything else is local or runner-scoped.
 /benchmarks/loadgen/loadgen
 /benchmarks/loadgen/loadgen-linux-amd64
 /benchmarks/loadgen/loadgen-linux-arm64
-/benchmarks/results/*-local/
+/benchmarks/_artifact/
 benchmarks/loadgen/bench-loadgen

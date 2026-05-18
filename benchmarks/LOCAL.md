@@ -124,8 +124,11 @@ echo "PROJECT_TOKEN=$PROJECT_TOKEN"
 
 `seed-project.sh` hits `/api/register`. On self-hosted backends only one
 organization is allowed, so this only works on a **fresh** DB — step 1's
-`down -v` is what guarantees that. The OTLP-only loadgen no longer needs the
-JWT or project ID, so we extract only the project token.
+`down -v` is what guarantees that. The throughput scenario only needs the
+project token (OTLP ingestion is bearer-authed); the read-probe scenario
+also needs the JWT + project ID for the dashboard endpoints — see
+[Running the read-probe scenario locally](#running-the-read-probe-scenario-locally)
+below.
 
 ### 4. Build and run the loadgen, one signal at a time
 
@@ -134,9 +137,17 @@ JWT or project ID, so we extract only the project token.
 mkdir -p /tmp/bench-localhost && rm -f /tmp/bench-localhost/*.json
 ```
 
-Pick numbers appropriate for the mode you booted in step 1. The two-phase
-ramp first grows batch size at a fixed low request rate, then grows request
-rate at the winning batch size.
+Pick numbers appropriate for the mode you booted in step 1. The throughput
+scenario runs a three-phase ramp:
+1. **Phase 1** grows batch size at a fixed low request rate (saturates one
+   client; finds the per-request decode/insert ceiling).
+2. **Phase 2** grows request rate at the winning batch size capped at
+   `--phase2-batch-cap` (collector shape: fat batches, low req rate).
+3. **Phase 3** grows request rate at batch=100 (SDK-fleet shape: small
+   batches, high req rate — stresses HTTP/auth/decode rather than insert).
+
+The examples below trim Phase 3 to keep laptop runs short; remove the
+`--phase3-*` overrides to exercise it.
 
 **SQLite (laptop) — quick smoke per signal:**
 
@@ -149,7 +160,8 @@ for sig in spans metrics logs; do
     --duration 5m --step-duration 30s \
     --phase1-batch-sizes 256,1024,4096 \
     --phase2-request-rates 1,5,20 \
-    --report-out "/tmp/bench-localhost/local-sqlite-${sig}.json" \
+    --phase3-request-rates 10,100 \
+    --report-out "/tmp/bench-localhost/local-sqlite-${sig}-throughput.json" \
     --tier local --mode sqlite
 done
 ```
@@ -165,12 +177,17 @@ for sig in spans metrics logs; do
     --duration 8m --step-duration 45s \
     --phase1-batch-sizes 256,1024,4096,8192 \
     --phase2-request-rates 1,5,20,50 \
-    --report-out "/tmp/bench-localhost/local-pgch-${sig}.json" \
+    --phase3-request-rates 10,100,500 \
+    --report-out "/tmp/bench-localhost/local-pgch-${sig}-throughput.json" \
     --tier local --mode pgch
 done
 ```
 
-On stderr you'll see two-phase progress like:
+The `-throughput` suffix on the filename matches the scenario folder convention
+(`benchmarks/results-throughput/`); use `-read-probe` when running
+`--scenario read-probe` (see [Running the read-probe scenario locally](#running-the-read-probe-scenario-locally) below).
+
+On stderr you'll see per-phase progress like:
 
 ```
 phase1 step 1: batch=256 rate=5.0 items/s=1280 p99=12ms err=0.00% passed=true
@@ -179,7 +196,9 @@ phase1 step 3: batch=4096 rate=5.0 items/s=20480 p99=42ms err=0.00% passed=true
 phase2 step 1: batch=4096 rate=1.0 items/s=4096 p99=15ms err=0.00% passed=true
 phase2 step 2: batch=4096 rate=5.0 items/s=20480 p99=21ms err=0.00% passed=true
 phase2 step 3: batch=4096 rate=20.0 items/s=81920 p99=180ms err=0.00% passed=true
-wrote /tmp/bench-localhost/local-sqlite-spans.json: signal=spans max sustainable spans/sec = 81920
+phase3 step 1: batch=100  rate=10.0 items/s=1000 p99=8ms err=0.00% passed=true
+phase3 step 2: batch=100  rate=100.0 items/s=10000 p99=22ms err=0.00% passed=true
+wrote /tmp/bench-localhost/local-sqlite-spans-throughput.json: signal=spans max sustainable spans/sec = 81920
 ```
 
 A run finishes when either (a) a step fails the error threshold, (b) all
@@ -189,11 +208,18 @@ configured steps pass, or (c) `--duration` expires.
 
 ```bash
 .venv-bench/bin/python benchmarks/scripts/chart.py /tmp/bench-localhost/
-open /tmp/bench-localhost/chart-spans.png
-open /tmp/bench-localhost/chart-metrics.png
-open /tmp/bench-localhost/chart-logs.png
+open /tmp/bench-localhost/chart-spans.png            # headline bars per tier × mode
+open /tmp/bench-localhost/chart-phase2-rate-spans.png  # collector-shape rate ramp
+open /tmp/bench-localhost/chart-pareto-spans.png       # latency–throughput trade-off
+open /tmp/bench-localhost/chart-cliff-spans.png        # step-by-step pass/fail grid
 cat /tmp/bench-localhost/summary.md
 ```
+
+The full chart suite (~14 PNG types per scenario folder, headline +
+phase-by-phase ramps + Pareto + tier scaling + cliff grids + batch
+efficiency + signal mix, plus read-probe equivalents) is described in
+[charts.md](charts.md). `chart.py` auto-detects which scenarios are in
+the folder and only renders the relevant charts.
 
 A one-entry result renders fine; it just won't have multiple bars/lines to
 compare against. Old pre-OTLP-split JSONs (without a `signal` field) are
@@ -211,11 +237,12 @@ The `-v` deletes the named volume so the next run is guaranteed clean.
 
 ## Reading the output
 
-Each result JSON has two phases:
+Each throughput result JSON has up to three phases plus a headline:
 
 ```json
 {
   "tier": "local", "mode": "sqlite", "signal": "spans",
+  "scenario": "throughput",
   "startedAt": "2026-05-15T...",  "endedAt": "...",
   "phase1": {
     "kind": "batch-size-ramp",
@@ -236,16 +263,31 @@ Each result JSON has two phases:
     "steps": [ ... ],
     "maxRequestRate": 100
   },
+  "phase3": {
+    "kind": "small-batch-rate-ramp",
+    "fixedBatchSize": 100,
+    "steps": [ ... ],
+    "maxRequestRate": 1000
+  },
   "maxSustainableItemsPerSec": 819200
 }
 ```
 
 **A step passes** when the combined error rate (HTTP failures + OTLP
-`PartialSuccess` rejected items) is ≤ `--ingest-err-threshold` (default 5%).
-Read endpoints are not probed in this benchmark.
+`PartialSuccess` rejected items) is ≤ `--ingest-err-threshold` (default 5%)
+AND the achieved request rate is ≥ `--soft-cliff-ratio × target` (default
+70%). The second check catches saturated-but-not-erroring soft cliffs.
 
-`maxSustainableItemsPerSec = phase2.fixedBatchSize × phase2.maxRequestRate`,
-where `maxRequestRate` is the rate of the last passing Phase 2 step.
+`maxSustainableItemsPerSec` is the **highest `actualItemsPerSec` recorded
+across any passing step from any phase** — measured from real OK responses,
+not `batchSize × targetRate` (which over-reports when the workers saturate
+before the limiter does). Different phases probe different shapes
+(collector fat-batch vs SDK small-batch); the headline reports the best
+shape's ceiling and per-phase numbers stay in the JSON for shape-specific
+analysis.
+
+Read-probe JSONs have a different shape — see [Running the read-probe
+scenario locally](#running-the-read-probe-scenario-locally) below.
 
 ---
 
@@ -281,13 +323,19 @@ sustain on synthetic, evenly-distributed load."
 | Flag | Default | When to change |
 |------|---------|----------------|
 | `--signal` | (required) | One of `spans`, `metrics`, `logs`. |
+| `--scenario` | `throughput` | `throughput` (three-phase ingest ramp) or `read-probe` (fill the table, probe a read at each level). |
 | `--phase1-batch-sizes` | `256,1024,4096,8192,16384` | Drop the lower steps on beefy boxes to save time; raise the cap to find the per-request decode/insert ceiling. |
 | `--phase2-request-rates` | `1,5,25,100,400` | Raise the cap to find the request-rate ceiling on big boxes; lower for cheap smoke tests. |
+| `--phase3-request-rates` | `10,100,1000,5000,10000` | The SDK-fleet shape ramp at batch=100. Lower the cap for fast smoke tests; drop the flag entirely to use the default range. |
 | `--phase1-fixed-rate` | 5 | Per-second request rate held constant during Phase 1. Small enough that batch size is the only variable. |
-| `--phase2-batch-cap` | 8192 | Cap on Phase 2 batch size (matches OTel collector default `send_batch_size`). Phase 2 uses `min(this, Phase 1 winner)`. |
+| `--phase2-batch-cap` | 16384 | Cap on Phase 2 batch size. Phase 2 uses `min(this, Phase 1 winner)`. Bumped past the OTel collector default of 8192 because pgch SUTs can usefully exceed it. |
+| `--phase3-batch-size` | 100 | Fixed batch size for Phase 3 — matches typical language-SDK `BatchSpanProcessor` output rather than the collector's 8192. |
+| `--soft-cliff-ratio` | 0.70 | A step also fails when achieved req-rate falls below this fraction of target — catches saturated-but-not-erroring cliffs. Set to 0 to disable. |
 | `--step-duration` | 2m | Shorten for smoke checks (15–30s), keep at 2m for real measurements. |
 | `--duration` | 30m | Hard cap on total wall time. |
 | `--ingest-err-threshold` | 0.05 | Combined HTTP error + OTLP rejected rate that fails a step. |
+| `--fill-levels` | `100000,1000000,10000000,100000000` | (read-probe only) Row counts to fill the table to before each probe. |
+| `--read-threshold-ms` | 5000 | (read-probe only) A probe fails if the read exceeds this. |
 
 The ramp is geometric (256 → 1024 → 4096 → …), so cliff resolution is coarse
 by design — for a precise number, run a second pass with a narrower band of
@@ -318,6 +366,87 @@ values around the known cliff.
 
 - **Loadgen run was killed; some Docker resources still up.**
   The compose stack is yours to manage — it won't auto-tear-down. Run step 6.
+
+---
+
+## Running the read-probe scenario locally
+
+The throughput scenario above answers "how fast can the SUT swallow OTLP
+data?" The read-probe scenario answers "how big can the table grow before
+the dashboard read on this endpoint cliffs?" Each fill level is reached by
+ingesting OTLP until the row count is hit, then the loadgen waits
+`--settle-seconds` and issues one read against the signal's dashboard
+endpoint (`/api/endpoints/grouped` for spans, `/api/metrics/application`
+for metrics, `/api/logs` for logs). The step fails when the read takes
+longer than `--read-threshold-ms` (default 5 s).
+
+Read-probe needs a JWT + project ID, not just a project token, because the
+dashboard endpoints are JWT-authenticated. `seed-project.sh` returns both:
+
+```bash
+seed_json=$(benchmarks/scripts/seed-project.sh http://localhost:8087)
+export PROJECT_TOKEN=$(echo "${seed_json}" | jq -r .projectToken)
+export PROJECT_ID=$(echo "${seed_json}" | jq -r .projectId)
+export JWT=$(echo "${seed_json}" | jq -r .jwt)
+```
+
+Then run the loadgen with `--scenario read-probe`. Small fill levels keep
+the laptop honest:
+
+```bash
+mkdir -p /tmp/bench-localhost && rm -f /tmp/bench-localhost/*.json
+for sig in spans metrics logs; do
+  benchmarks/loadgen/loadgen \
+    --target http://localhost:8087 \
+    --token "$PROJECT_TOKEN" --jwt "$JWT" --project-id "$PROJECT_ID" \
+    --signal "$sig" --scenario read-probe \
+    --fill-levels 10000,100000,1000000 \
+    --settle-seconds 5s \
+    --report-out "/tmp/bench-localhost/local-pgch-${sig}-read-probe.json" \
+    --tier local --mode pgch
+done
+.venv-bench/bin/python benchmarks/scripts/chart.py /tmp/bench-localhost/
+open /tmp/bench-localhost/chart-readprobe-headline-spans.png
+open /tmp/bench-localhost/chart-readprobe-spans.png
+open /tmp/bench-localhost/chart-readprobe-cliff-spans.png
+```
+
+`chart.py` against a folder mixing throughput and read-probe JSONs renders
+both suites — the wrong-scenario renderers are no-ops. In production, the
+CI workflow keeps them separate by writing to `benchmarks/results-throughput/`
+vs `benchmarks/results-probe/` based on the `--scenario` flag.
+
+Read-probe JSONs have a different shape from throughput:
+
+```json
+{
+  "tier": "local", "mode": "pgch", "signal": "spans",
+  "scenario": "read-probe",
+  "readProbe": {
+    "readPath": "/api/endpoints/grouped",
+    "readThresholdMs": 5000,
+    "settleSeconds": 5,
+    "fillBatchSize": 8192,
+    "fillRequestRate": 100,
+    "steps": [
+      {
+        "fillLevelTarget": 10000,
+        "rowsIngested": 10123,
+        "ingestSecondsElapsed": 3.2,
+        "readLatencyMs": 180,
+        "readOk": true,
+        "passed": true
+      }
+    ],
+    "maxFillLevelPassed": 1000000
+  },
+  "maxFillLevelPassed": 1000000
+}
+```
+
+The headline number is `maxFillLevelPassed` — the largest row count at
+which the read came back under threshold. The matching read latency lives
+in the last passing step's `readLatencyMs`.
 
 ---
 

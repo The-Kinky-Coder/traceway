@@ -31,13 +31,26 @@ pollute the latency signal:
 | CCX33 | 8    | 32 GB | 240 GB NVMe |
 | CCX43 | 16   | 64 GB | 360 GB NVMe |
 
-## Not measured here
+## Two scenarios
 
-This benchmark is **ingest-only** — it does not probe dashboard read latency.
-A separate future benchmark will pre-load N events (100k, 1M, 10M, 100M) and
-measure read endpoint P99 at each fill level. Don't read the numbers here as
-"the dashboard stays usable at N items/sec" — they're "the SUT keeps swallowing
-items at N items/sec without erroring or rejecting."
+Two distinct questions; one matrix-entry script answers either depending on
+the `--scenario` flag.
+
+- **`throughput` (default).** A three-phase ingest ramp (Phase 1: batch
+  size; Phase 2: collector-shape rate; Phase 3: SDK-fleet-shape rate).
+  Results land in `benchmarks/results-throughput/`. Answers "how fast can
+  the SUT swallow OTLP data without erroring or rejecting?"
+- **`read-probe`.** Fills the table to a sequence of row counts
+  (`100k, 1M, 10M, 100M`) and probes one dashboard read at each level,
+  failing the step when the read exceeds `--read-threshold-ms` (default
+  5 s). Results land in `benchmarks/results-probe/`. Answers "how big
+  can the table grow before the dashboard read on this endpoint cliffs?"
+
+The two scenarios write to sibling folders so one never overwrites the
+other. Each folder is wiped on each dispatch of its scenario.
+
+Don't read the throughput number as "the dashboard stays usable at N
+items/sec" — that's what read-probe is for.
 
 ## How a run works
 
@@ -51,7 +64,7 @@ Per matrix entry (one tier × one mode × one signal):
 4. `loadgen-bootstrap.sh` cross-compiles the loadgen, pushes it to the
    loadgen box, runs it with `--signal <spans|metrics|logs>` against the
    SUT's *private* IP.
-5. The loadgen runs a two-phase ramp:
+5. The loadgen runs a three-phase ramp:
    - **Phase 1 — batch-size ramp.** Single client at a fixed 5 req/sec.
      Batch sizes step through `256,1024,4096,8192,16384`. Each step holds for
      `--step-duration` (default 2 min). Stops at the first failing step.
@@ -111,9 +124,11 @@ prevents a permanently-broken SUT from restart-looping forever; if the
 third restart also crashes, the container stays down and the health-poll
 fires the clean-abort path.
 
-After all matrix entries finish, `chart.py` renders three bar charts
-(`chart-spans.png`, `chart-metrics.png`, `chart-logs.png`), three detail
-charts (`chart-detail-<signal>.png`), and a combined `summary.md`.
+After all matrix entries finish, `chart.py` renders the full chart suite
+(headline bars, Phase 1 / 2 / 3 ramps, Pareto, tier scaling, cliff grid,
+batch efficiency, signal mix — plus the read-probe equivalents in the
+read-probe folder) and a combined `summary.md`. See
+[charts.md](charts.md) for a guide to reading each chart.
 
 ## Running from your laptop
 
@@ -156,11 +171,12 @@ works, the full matrix works.
 ```
 
 4 tiers × 2 modes × 3 signals, default `--duration 30m`. Output goes to
-`benchmarks/results/latest-local/`, which is wiped at the start of every
-run so each dispatch's output stands alone — no silent cross-run mixing
-that the old date-folder layout produced. The `-local` suffix keeps dev
-runs separate from the committed `latest/` so you don't accidentally
-clobber CI's data.
+`benchmarks/results-throughput/` (or `benchmarks/results-probe/` when
+running `--scenario read-probe`), which is wiped at the start of every run
+so each dispatch's output stands alone — no silent cross-run mixing that
+the old date-folder layout produced. The two scenario folders are
+independent: a read-probe run never touches `results-throughput/` and
+vice-versa.
 
 ### Other useful invocations
 
@@ -180,9 +196,8 @@ clobber CI's data.
 # Override the per-entry runtime
 ./benchmarks/scripts/run-local.sh --tier ccx13 --duration 10m
 
-# Drop the "-local" suffix so the result dir matches the CI naming convention
-# (use this only when you want to commit a one-off re-benchmark)
-./benchmarks/scripts/run-local.sh --tier ccx23 --commit
+# Switch to the read-probe scenario (writes to benchmarks/results-probe/)
+./benchmarks/scripts/run-local.sh --scenario read-probe
 ```
 
 ## Running from GitHub Actions
@@ -198,14 +213,18 @@ Required GitHub secrets:
   `benchmark-key`.
 
 After the matrix completes, an `aggregate` job downloads all artifacts, runs
-`chart.py`, and commits `benchmarks/results/latest/` to `main` via a bot
-commit (`git add -A`, so files from a prior dispatch that aren't in this one
-get staged for deletion). No PR — it's a generated artifact. **The
-committed `latest/` always reflects exactly one dispatch**; comparing to
-previous runs is `git log -- benchmarks/results/latest/` or
-`git show <sha>:benchmarks/results/latest/summary.md`. Dated historical
-folders (`benchmarks/results/2026-05-15/` etc.) from before this layout
-change are kept in git for reference but are no longer written to.
+`chart.py`, and commits the matching scenario folder
+(`benchmarks/results-throughput/` for throughput runs,
+`benchmarks/results-probe/` for read-probe runs) to `main` via a bot commit
+(`git add -A`, so files from a prior dispatch that aren't in this one get
+staged for deletion). No PR — it's a generated artifact. **Each scenario
+folder always reflects exactly one dispatch of that scenario**; a
+throughput dispatch never modifies `results-probe/` and vice-versa.
+Comparing to previous runs is `git log -- benchmarks/results-throughput/`
+or `git show <sha>:benchmarks/results-throughput/summary.md`. Dated
+historical folders (`benchmarks/results/2026-05-15/` etc.) from before
+this layout change are kept in git for reference but are no longer written
+to.
 
 ## Running against managed ClickHouse
 
@@ -278,9 +297,12 @@ benchmarks/
     reset-managed-ch.sh          # Wipes the managed CH DB between matrix entries
     loadgen-bootstrap.sh         # Cross-compiles + runs loadgen
     seed-project.sh              # /api/register -> JWT + project token JSON
-    chart.py                     # matplotlib renderer (per-signal charts)
+    chart.py                     # matplotlib renderer (throughput + read-probe charts)
     _ssh.sh                      # Shared ssh/rsync helpers
-  results/                       # Committed bench results live here
+  results-throughput/            # Committed throughput results (wiped per dispatch)
+  results-probe/                 # Committed read-probe results (wiped per dispatch)
+  results/                       # Historical dated folders (not written to anymore)
+  charts.md                      # Reading guide for every chart chart.py emits
 ```
 
 ## Failure modes & debugging

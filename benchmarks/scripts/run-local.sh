@@ -14,7 +14,13 @@
 #   run-local.sh --smoke                # 1 tier, 1 mode, 1 signal, short steps (~5 min)
 #   run-local.sh --tier ccx13 --mode sqlite --signal spans
 #   run-local.sh --dry-run              # validate env + print plan, no provisioning
-#   run-local.sh --commit               # drop the "-local" suffix on the output dir
+#
+# Output:
+#   --scenario throughput  ->  benchmarks/results-throughput/
+#   --scenario read-probe  ->  benchmarks/results-probe/
+#   Each scenario folder is wiped at the start of its run so output reflects
+#   only the current dispatch. The two folders are never touched by each
+#   other's runs — running read-probe will not clobber throughput results.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,10 +33,9 @@ SCENARIO="throughput"
 DURATION="30m"
 SMOKE=0
 DRY_RUN=0
-COMMIT=0
 
 usage() {
-    sed -n '1,17p' "$0"; exit 2
+    sed -n '1,23p' "$0"; exit 2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -42,7 +47,6 @@ while [[ $# -gt 0 ]]; do
         --duration) DURATION="$2"; shift 2 ;;
         --smoke)    SMOKE=1; shift ;;
         --dry-run)  DRY_RUN=1; shift ;;
-        --commit)   COMMIT=1; shift ;;
         -h|--help)  usage ;;
         *) echo "unknown flag: $1" >&2; usage ;;
     esac
@@ -67,17 +71,17 @@ fi
 export BENCH_MODES_PLAN="${MODES}"
 "${SCRIPT_DIR}/preflight.sh"
 
-# Single, dispatch-scoped results folder. Wiped at the start so each run's
-# committed output reflects only that run's matrix entries — no
-# cross-dispatch mixing (which was the failure mode of the date-folder
-# layout: two dispatches landing on the same day silently combined into one
-# summary.md). Cross-run comparison happens via `git log`, not adjacent
+# One canonical folder per scenario. Wiped at the start so each run's output
+# reflects only that run's matrix entries — no cross-dispatch mixing (which
+# was the failure mode of the date-folder layout: two dispatches landing on
+# the same day silently combined into one summary.md). The throughput folder
+# and the read-probe folder are siblings so each scenario stays out of the
+# other's way. Cross-run comparison happens via `git log`, not adjacent
 # folders.
-if [[ "${COMMIT}" -eq 1 ]]; then
-    OUT_DIR="${REPO_ROOT}/benchmarks/results/latest"
-else
-    OUT_DIR="${REPO_ROOT}/benchmarks/results/latest-local"
-fi
+case "${SCENARIO}" in
+    throughput) OUT_DIR="${REPO_ROOT}/benchmarks/results-throughput" ;;
+    read-probe) OUT_DIR="${REPO_ROOT}/benchmarks/results-probe" ;;
+esac
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
 echo "results dir: ${OUT_DIR}" >&2
