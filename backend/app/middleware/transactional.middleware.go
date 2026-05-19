@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"github.com/tracewayapp/traceway/backend/app/db"
+	"context"
 	"database/sql"
 	"net/http"
 
@@ -28,9 +29,11 @@ func Transactional(c *gin.Context) {
 
 	c.Set(TransactionContextKey, txHandle)
 
+	c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), TransactionContextKey, txHandle))
+
 	c.Next()
 
-	if status := c.Writer.Status(); status == http.StatusOK || status == http.StatusCreated || status == http.StatusSeeOther {
+	if status := c.Writer.Status(); status >= 200 && status < 400 {
 		if err := txHandle.Commit(); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			panic(err)

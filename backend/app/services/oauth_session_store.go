@@ -2,7 +2,6 @@ package services
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base32"
 	"errors"
 	"net/http"
@@ -19,10 +18,18 @@ import (
 // DB. The cookie holds only a signed session ID; the session data (which can
 // exceed the 4096-byte cookie limit for large OIDC ID tokens) lives in the
 // oauth_sessions table.
+//
+// Contract: every route that hands a request to this store (directly or via
+// gothic) must be wrapped in middleware.Transactional so the request context
+// carries a *sql.Tx. The store reuses that tx rather than opening its own —
+// opening a second tx from the same handler would deadlock against the
+// single-connection SQLite main DB.
 type dbSessionStore struct {
 	codecs  []securecookie.Codec
 	options *sessions.Options
 }
+
+var errNoTransaction = errors.New("oauth session store: no transaction in request context (route must use middleware.Transactional)")
 
 func newDBSessionStore(secret string, options *sessions.Options) *dbSessionStore {
 	hashKey := []byte(secret)
@@ -56,9 +63,11 @@ func (s *dbSessionStore) New(r *http.Request, name string) (*sessions.Session, e
 		return session, nil
 	}
 
-	data, err := db.ExecuteTransaction(func(tx *sql.Tx) ([]byte, error) {
-		return repositories.OAuthSessionRepository.Get(tx, id)
-	})
+	tx := db.GetTx(r.Context())
+	if tx == nil {
+		return session, errNoTransaction
+	}
+	data, err := repositories.OAuthSessionRepository.Get(tx, id)
 	if err != nil || data == nil {
 		return session, nil
 	}
@@ -72,11 +81,14 @@ func (s *dbSessionStore) New(r *http.Request, name string) (*sessions.Session, e
 }
 
 func (s *dbSessionStore) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
+	tx := db.GetTx(r.Context())
+	if tx == nil {
+		return errNoTransaction
+	}
+
 	if session.Options != nil && session.Options.MaxAge < 0 {
 		if session.ID != "" {
-			if _, err := db.ExecuteTransaction(func(tx *sql.Tx) (struct{}, error) {
-				return struct{}{}, repositories.OAuthSessionRepository.Delete(tx, session.ID)
-			}); err != nil {
+			if err := repositories.OAuthSessionRepository.Delete(tx, session.ID); err != nil {
 				return err
 			}
 		}
@@ -98,9 +110,7 @@ func (s *dbSessionStore) Save(r *http.Request, w http.ResponseWriter, session *s
 	}
 
 	expires := time.Now().UTC().Add(time.Duration(session.Options.MaxAge) * time.Second)
-	if _, err := db.ExecuteTransaction(func(tx *sql.Tx) (struct{}, error) {
-		return struct{}{}, repositories.OAuthSessionRepository.Save(tx, session.ID, []byte(encoded), expires)
-	}); err != nil {
+	if err := repositories.OAuthSessionRepository.Save(tx, session.ID, []byte(encoded), expires); err != nil {
 		return err
 	}
 

@@ -121,7 +121,7 @@ func RegisterControllers(router *gin.RouterGroup) {
 
 	// OAuth (Google, GitHub via markbates/goth)
 	router.GET("/auth/providers", OAuthController.ListProviders)
-	router.GET("/auth/start/:provider", OAuthController.Begin)
+	router.GET("/auth/start/:provider", middleware.Transactional, OAuthController.Begin)
 	router.GET("/auth/callback/:provider", middleware.Transactional, OAuthController.Callback)
 	router.POST("/auth/finish-setup", middleware.UseAppAuth, middleware.Transactional, OAuthController.FinishSetup)
 

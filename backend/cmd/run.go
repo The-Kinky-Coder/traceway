@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -66,6 +67,8 @@ func Run(opts ...Option) {
 		if o.disableLogging {
 			config.LoggingEnabled = false
 		}
+
+		applyOAuthEnvOverrides(cfg)
 	}
 	config.Init(cfg)
 
@@ -204,6 +207,39 @@ func Run(opts ...Option) {
 	notifySystemd()
 	if err := router.Run(":" + portsList[0]); err != nil {
 		panic(fmt.Errorf("Error starting server on port %s: %v", portsList[0], err))
+	}
+}
+
+// applyOAuthEnvOverrides lets the dev-options path pick up OAuth/OIDC env vars
+// so embedded examples (e.g. devtesting-embedded) can be configured for SSO
+// testing without exposing every OIDC knob as a WithXxx option.
+func applyOAuthEnvOverrides(cfg *config.Cfg) {
+	for _, m := range []struct {
+		envVar string
+		dest   *string
+	}{
+		{"OAUTH_SESSION_SECRET", &cfg.OAuthSessionSecret},
+		{"GOOGLE_CLIENT_ID", &cfg.GoogleClientID},
+		{"GOOGLE_CLIENT_SECRET", &cfg.GoogleClientSecret},
+		{"GITHUB_CLIENT_ID", &cfg.GitHubClientID},
+		{"GITHUB_CLIENT_SECRET", &cfg.GitHubClientSecret},
+		{"OIDC_CLIENT_ID", &cfg.OIDCClientID},
+		{"OIDC_CLIENT_SECRET", &cfg.OIDCClientSecret},
+		{"OIDC_DISCOVERY_URL", &cfg.OIDCDiscoveryURL},
+		{"OIDC_DISPLAY_NAME", &cfg.OIDCDisplayName},
+		{"OIDC_AUTO_CREATE_USERS", &cfg.OIDCAutoCreateUsers},
+		{"OIDC_ORG_CLAIM", &cfg.OIDCOrgClaim},
+		{"OIDC_EXTRA_SCOPES", &cfg.OIDCExtraScopes},
+		{"OIDC_ROLE_CLAIM", &cfg.OIDCRoleClaim},
+		{"OIDC_ROLE_MAP", &cfg.OIDCRoleMap},
+		{"OIDC_AUTH_URL", &cfg.OIDCAuthURL},
+		{"OIDC_TOKEN_URL", &cfg.OIDCTokenURL},
+		{"OIDC_USER_INFO_URL", &cfg.OIDCUserInfoURL},
+		{"DISABLE_PASSWORD_LOGIN", &cfg.DisablePasswordLogin},
+	} {
+		if v := os.Getenv(m.envVar); v != "" {
+			*m.dest = v
+		}
 	}
 }
 
