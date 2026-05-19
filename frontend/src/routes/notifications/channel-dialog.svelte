@@ -264,7 +264,7 @@
 </script>
 
 <AlertDialog.Root {open} onOpenChange={handleOpenChange}>
-	<AlertDialog.Content class="max-w-md max-h-[90vh] overflow-y-auto">
+	<AlertDialog.Content class="max-h-[90vh] max-w-md overflow-y-auto">
 		<AlertDialog.Header>
 			<AlertDialog.Title>{isEditing ? 'Edit Channel' : 'New Channel'}</AlertDialog.Title>
 			<AlertDialog.Description>
@@ -290,8 +290,7 @@
 				<Label for="channel-type">Type</Label>
 				<Select.Root type="single" bind:value={channelType}>
 					<Select.Trigger class="w-full">
-						{channelTypeOptions.find((o) => o.value === channelType)?.label ||
-							'Select type'}
+						{channelTypeOptions.find((o) => o.value === channelType)?.label || 'Select type'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each channelTypeOptions as option}
@@ -353,11 +352,7 @@
 				</div>
 				<div class="space-y-2">
 					<Label for="webhook-secret">Secret (optional)</Label>
-					<Input
-						id="webhook-secret"
-						bind:value={webhookSecret}
-						placeholder="HMAC signing secret"
-					/>
+					<Input id="webhook-secret" bind:value={webhookSecret} placeholder="HMAC signing secret" />
 				</div>
 				<div class="space-y-2">
 					<Label>Headers (optional)</Label>
@@ -368,11 +363,7 @@
 								placeholder="Header name"
 								class="flex-1"
 							/>
-							<Input
-								bind:value={webhookHeaders[index].value}
-								placeholder="Value"
-								class="flex-1"
-							/>
+							<Input bind:value={webhookHeaders[index].value} placeholder="Value" class="flex-1" />
 							<Button
 								variant="ghost"
 								size="icon"
@@ -399,19 +390,11 @@
 				</div>
 				<div class="space-y-2">
 					<Label for="slack-channel">Channel Override (optional)</Label>
-					<Input
-						id="slack-channel"
-						bind:value={slackChannel}
-						placeholder="#alerts"
-					/>
+					<Input id="slack-channel" bind:value={slackChannel} placeholder="#alerts" />
 				</div>
 				<div class="space-y-2">
 					<Label for="slack-username">Username (optional)</Label>
-					<Input
-						id="slack-username"
-						bind:value={slackUsername}
-						placeholder="Traceway"
-					/>
+					<Input id="slack-username" bind:value={slackUsername} placeholder="Traceway" />
 				</div>
 			{:else if channelType === 'github'}
 				<div class="space-y-2">
@@ -439,21 +422,40 @@
 			{:else if channelType === 'pushover'}
 				<div class="space-y-2">
 					<Label for="po-user-key">User Key</Label>
-					<Input id="po-user-key" bind:value={pushoverUserKey} placeholder="Your Pushover user key" required />
+					<Input
+						id="po-user-key"
+						bind:value={pushoverUserKey}
+						placeholder="Your Pushover user key"
+						required
+					/>
 				</div>
 				<div class="space-y-2">
 					<Label for="po-app-token">App Token</Label>
-					<Input id="po-app-token" type="password" bind:value={pushoverAppToken} placeholder="Your Pushover application token" required />
+					<Input
+						id="po-app-token"
+						type="password"
+						bind:value={pushoverAppToken}
+						placeholder="Your Pushover application token"
+						required
+					/>
 				</div>
 				<div class="space-y-2">
 					<Label for="po-device">Device (optional)</Label>
-					<Input id="po-device" bind:value={pushoverDevice} placeholder="Leave empty for all devices" />
+					<Input
+						id="po-device"
+						bind:value={pushoverDevice}
+						placeholder="Leave empty for all devices"
+					/>
 				</div>
 				<div class="space-y-2">
 					<Label for="po-priority">Priority</Label>
 					<Select.Root type="single" bind:value={pushoverPriority}>
 						<Select.Trigger class="w-full">
-							{pushoverPriority === '0' ? 'Normal' : pushoverPriority === '1' ? 'High' : 'Emergency'}
+							{pushoverPriority === '0'
+								? 'Normal'
+								: pushoverPriority === '1'
+									? 'High'
+									: 'Emergency'}
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="0">Normal</Select.Item>
@@ -473,16 +475,29 @@
 					</div>
 					<div class="space-y-2">
 						<Label for="po-callback">Callback URL (optional)</Label>
-						<Input id="po-callback" bind:value={pushoverCallback} placeholder="https://hooks.example.com/acknowledged" />
+						<Input
+							id="po-callback"
+							bind:value={pushoverCallback}
+							placeholder="https://hooks.example.com/acknowledged"
+						/>
 					</div>
 				{/if}
 				<div class="space-y-2">
 					<Label for="po-sound">Sound (optional)</Label>
-					<Input id="po-sound" bind:value={pushoverSound} placeholder="e.g. pushover, bike, bugle" />
+					<Input
+						id="po-sound"
+						bind:value={pushoverSound}
+						placeholder="e.g. pushover, bike, bugle"
+					/>
 				</div>
 				<div class="flex items-center gap-2">
-					<input id="po-html" type="checkbox" bind:checked={pushoverHtml} class="h-4 w-4" />
-					<Label for="po-html">Enable HTML formatting</Label>
+					<input
+						id="po-html"
+						type="checkbox"
+						bind:checked={pushoverHtml}
+						class="h-4 w-4 cursor-pointer"
+					/>
+					<Label for="po-html" class="cursor-pointer">Enable HTML formatting</Label>
 				</div>
 				<div class="space-y-2">
 					<Label for="po-ttl">Time to Live (seconds, 0 = forever)</Label>

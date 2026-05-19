@@ -106,7 +106,7 @@
   --secondary-foreground: var(--fg-0);
   --muted: var(--ink-2);
   --muted-foreground: var(--fg-2);
-  --accent: var(--ink-3);
+  --accent: var(--ink-5);
   --accent-foreground: var(--fg-0);
   --destructive: var(--crit);
   --border: var(--hair);
